@@ -372,8 +372,9 @@ void Menu::MenuDrawItem(WidgetInfo& widget, UIWidgets::Colors menuThemeIndex) {
                                         options)) {
                     Ship::Context::GetRawInstance()->GetConfig()->SetInt("Window.Backend.Id",
                                                                          (int32_t)(configWindowBackend));
-                    Ship::Context::GetRawInstance()->GetConfig()->SetString("Window.Backend.Name",
-                                                                            windowBackendsMap.at(configWindowBackend));
+                    if (auto it = windowBackendsMap.find(configWindowBackend); it != windowBackendsMap.end()) {
+                        Ship::Context::GetRawInstance()->GetConfig()->SetString("Window.Backend.Name", it->second);
+                    }
                     Ship::Context::GetRawInstance()->GetConfig()->Save();
                     UpdateWindowBackendObjects();
                 }
