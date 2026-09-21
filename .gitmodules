@@ -1,8 +1,8 @@
 [submodule "libultraship"]
 	path = libultraship
-	url = https://github.com/kenix3/libultraship.git
-	branch = port-maintenance
+	url = https://github.com/buddingmonkey/libultraship.git
+	branch = mobile-xr-port
 [submodule "torch"]
 	path = torch
-	url = https://github.com/HarbourMasters/Torch.git
-	branch = main
+	url = https://github.com/buddingmonkey/Torch.git
+	branch = torch/segment-macro-collision
