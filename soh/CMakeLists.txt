@@ -626,7 +626,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
         target_link_options(${PROJECT_NAME} PRIVATE
             -pthread
                 #-fsanitize=address
-            -Wl,-export-dynamic
+            $<$<NOT:$<PLATFORM_ID:iOS>>:-Wl,-export-dynamic>
         )
     endif()
 endif()
