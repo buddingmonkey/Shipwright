@@ -411,3 +411,4 @@ ReleaseObj/*
 
 # Junk from App Bundle
 appsupport
+!ios/Assets.xcassets/**/*.png

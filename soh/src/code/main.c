@@ -2,6 +2,9 @@
 #include <Windows.h>
 #include <locale.h>
 #endif
+#ifdef __IOS__
+#include <SDL_main.h>
+#endif
 
 #include "global.h"
 #include "vt.h"
