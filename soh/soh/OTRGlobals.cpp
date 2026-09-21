@@ -406,6 +406,19 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
     return !std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs(fileName, appShortName));
 }
 
+[[noreturn]] static void ShutdownAndExit(int code, std::shared_ptr<BS::thread_pool>* threadPool = nullptr) {
+    if (threadPool != nullptr) {
+        *threadPool = nullptr;
+    }
+    SohGui::Destroy();
+    sohFast3dWindow = nullptr;
+    Ship::Context::DestroyInstance();
+    if (OTRGlobals::Instance != nullptr) {
+        OTRGlobals::Instance->context = nullptr;
+    }
+    exit(code);
+}
+
 void OTRGlobals::RunExtract(int argc, char* argv[]) {
     bool extractDone = false;
     ExtractSteps extractStep = ES_PORT_ARCHIVE;
@@ -439,13 +452,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                           "\x1b[2;2HYou've launched the Ship with an old ROM O2R file."
                           "\x1b[4;2HPlease regenerate a new ROM O2R and relaunch."
                           "\x1b[6;2HPress the Home button to exit...",
-                          "OK", "", [&]() { exit(1); });
+                          "OK", "", [&]() { ShutdownAndExit(1); });
 #elif defined(__WIIU__)
     SohGui::RegisterPopup("Outdated ROM Archives",
                           "You've launched the Ship with an old a ROM O2R file.\n\n"
                           "Please generate a ROM O2R and relaunch.\n\n"
                           "Press and hold the Power button to shutdown...",
-                          "OK", "", [&]() { exit(1); });
+                          "OK", "", [&]() { ShutdownAndExit(1); });
     OSFatal();
 #endif
 
@@ -453,7 +466,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
         SohGui::RegisterPopup("Extractor assets not found",
                               "No O2R files found. Missing 'assets/' folder needed to generate OTR file.\nPlease "
                               "re-extract them from the download or.\n\nExiting...",
-                              "OK", "", [&]() { exit(1); });
+                              "OK", "", [&]() { ShutdownAndExit(1); });
     } else if (shouldRegen) {
         if (RemoveArchiveAcrossAppDirs("oot.o2r") && RemoveArchiveAcrossAppDirs("oot-mq.o2r")) {
             SohGui::RegisterPopup(
@@ -465,7 +478,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                 "Outdated ROM Archives",
                 "Your oot.o2r or oot-mq.o2r were created with incompatible\nversions of SoH, but they"
                 "could not be removed\nautomatically. Please delete them now and re-launch.\nExiting...",
-                "OK", "", [&]() { exit(1); });
+                "OK", "", [&]() { ShutdownAndExit(1); });
         }
     }
 
@@ -506,7 +519,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 #endif
                     std::string title =
                         !std::filesystem::exists(portArchivePath) ? "Missing soh.o2r" : "soh.o2r is outdated";
-                    SohGui::RegisterPopup(title, msg, "OK", "", [&]() { exit(1); });
+                    SohGui::RegisterPopup(title, msg, "OK", "", [&]() { ShutdownAndExit(1, &threadPool); });
                 }
                 continue;
             }
@@ -529,7 +542,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         if (IsSubpath(ownPath, tempPath)) {
                             SohGui::RegisterPopup("SoH Path Error",
                                                   "SoH is running in a temp folder.\nExtract the .zip and run again.",
-                                                  "OK", "", [&]() { exit(0); });
+                                                  "OK", "", [&]() { ShutdownAndExit(0, &threadPool); });
                         } else {
                             windowsStep = WS_PERMS;
                         }
@@ -550,7 +563,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                                                   "OK", "", [&]() {
                                                       fclose(tfile);
                                                       PathTestCleanup(tfile);
-                                                      exit(0);
+                                                      ShutdownAndExit(0, &threadPool);
                                                   });
                         } else {
                             fclose(tfile);
@@ -558,7 +571,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                                 SohGui::RegisterPopup("SoH Permissions Error",
                                                       "SoH does not have proper file permissions.\nPlease move it to a "
                                                       "folder that does and run again.",
-                                                      "OK", "", [&]() { exit(0); });
+                                                      "OK", "", [&]() { ShutdownAndExit(0, &threadPool); });
                             }
                             windowsStep = WS_ONEDRIVE;
                         }
@@ -570,7 +583,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                                                   "SoH appears to be in a OneDrive folder, which will cause issues.\n"
                                                   "Please move it to a folder outside of OneDrive, like the root of a\n"
                                                   "drive (e.g. \"C:\\Games\\SoH\").",
-                                                  "OK", "", [&]() { exit(0); });
+                                                  "OK", "", [&]() { ShutdownAndExit(0, &threadPool); });
                         } else {
                             windowsStep = WS_DONE;
                             extractStep = args.empty() ? ES_EXTRACT : ES_EXTRACT_ARGS;
@@ -598,7 +611,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                                 extractStep = ES_VERIFY;
                             }
                         },
-                        [&]() { exit(0); });
+                        [&]() { ShutdownAndExit(0, &threadPool); });
                     break;
                 }
                 file = args.at(0);
@@ -644,7 +657,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         if (!ootO2RExists) {
                             SohGui::RegisterPopup(
                                 "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
-                                [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
+                                [&]() { promptStep = PS_LOCAL; }, [&]() { ShutdownAndExit(0, &threadPool); });
                         } else {
                             extractStep = ES_VERIFY;
                         }
@@ -717,7 +730,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                 if (!ootO2RExists) {
                     SohGui::RegisterPopup("No ROM Archives",
                                           "No ROM O2R files detected. Please generate a ROM O2R and relaunch.", "OK",
-                                          "", [&]() { exit(0); });
+                                          "", [&]() { ShutdownAndExit(0, &threadPool); });
                 }
                 extractDone = true;
                 continue;
@@ -728,7 +741,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 
     render:
         if (!WindowIsRunning()) {
-            exit(0);
+            ShutdownAndExit(0, &threadPool);
         }
         // Process window events for resize, mouse, keyboard events
         wnd->HandleEvents();
@@ -750,7 +763,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                 try {
                     extractionTask->get();
                 } catch (const std::exception& e) {
-                    SohGui::RegisterPopup("Extraction Crashed", e.what(), "Close", "", []() { exit(1); });
+                    SohGui::RegisterPopup("Extraction Crashed", e.what(), "Close", "", []() { ShutdownAndExit(1); });
                 }
                 extractionTask.reset();
             } else {
@@ -969,7 +982,7 @@ void OTRGlobals::Initialize() {
                                      "Attempted to load an invalid OTR file. Try regenerating.", nullptr);
             SPDLOG_ERROR("Invalid OTR File!");
 #endif
-            exit(1);
+            ShutdownAndExit(1);
         }
         switch (version) {
             case OOT_PAL_MQ:
@@ -1647,6 +1660,7 @@ extern "C" void DeinitOTR() {
     SohGui::Destroy();
     sohFast3dWindow = nullptr;
 
+    Ship::Context::DestroyInstance();
     OTRGlobals::Instance->context = nullptr;
 }
 
