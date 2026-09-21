@@ -773,6 +773,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         GIT_TAG release-2.2.0
         OVERRIDE_FIND_PACKAGE)
     FetchContent_MakeAvailable(SDL2_net)
+    # The fetched SDL_net keeps its header at the source root; the Network code
+    # includes <SDL2/SDL_net.h>, which only an installed layout provides.
+    file(COPY ${sdl2_net_SOURCE_DIR}/SDL_net.h DESTINATION ${CMAKE_BINARY_DIR}/sdl2_net-include/SDL2)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_BINARY_DIR}/sdl2_net-include)
     if(TARGET SDL2_net::SDL2_net-static)
         set(SOH_SDL2_NET_TARGET SDL2_net::SDL2_net-static)
     else()
