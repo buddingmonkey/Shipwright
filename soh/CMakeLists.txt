@@ -737,6 +737,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     find_package(Threads REQUIRED)
     include(FetchContent)
     set(BUILD_TESTING OFF)
+    # ogg and vorbis still declare cmake_minimum_required 2.8; CMake 4 refuses to
+    # configure them without this floor.
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
     FetchContent_Declare(Ogg
         GIT_REPOSITORY https://github.com/xiph/ogg.git
         GIT_TAG v1.3.6
@@ -757,9 +760,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(OP_DISABLE_HTTP ON)
     set(OP_DISABLE_EXAMPLES ON)
     set(OP_DISABLE_DOCS ON)
+    # The last opusfile release (0.12, 2020) predates its CMake support; this is
+    # master, pinned.
     FetchContent_Declare(OpusFile
         GIT_REPOSITORY https://github.com/xiph/opusfile.git
-        GIT_TAG v0.12
+        GIT_TAG 6dfd29e7adb87f2e193575fc3fa88cbf1a0b27df
         OVERRIDE_FIND_PACKAGE)
     FetchContent_MakeAvailable(OpusFile)
     set(SDL2NET_INSTALL OFF)
