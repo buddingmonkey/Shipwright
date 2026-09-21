@@ -1,12 +1,31 @@
 cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
 
-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+if(NOT CMAKE_TOOLCHAIN_FILE MATCHES "ios.toolchain")
+    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
+endif()
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
-
 project(Ship VERSION 9.2.3 LANGUAGES C CXX)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(SOH_APPLE_MOBILE TRUE)
+endif()
+
+if(SOH_APPLE_MOBILE)
+    enable_language(OBJC OBJCXX)
+    set(PROJECT_ID "com.harbormasters.soh" CACHE STRING "iOS bundle identifier")
+    set(IOS_DEVELOPMENT_TEAM "" CACHE STRING "Apple Developer Team ID used to sign the iOS app")
+    set(IOS_DEPLOYMENT_TARGET "${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    if(IOS_DEPLOYMENT_TARGET VERSION_LESS 14.0)
+        message(WARNING "iOS deployment target is ${IOS_DEPLOYMENT_TARGET}; pass -DDEPLOYMENT_TARGET=16.0 "
+                        "to the toolchain for a supported configuration.")
+    endif()
+    set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${IOS_DEVELOPMENT_TEAM}")
+    set(CMAKE_XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2")
+    set(CMAKE_XCODE_ATTRIBUTE_SKIP_INSTALL "YES")
+endif()
 include(CMake/soh-cvars.cmake)
 include(CMake/lus-cvars.cmake)
 set(SPDLOG_LEVEL_TRACE 0)
@@ -300,6 +319,33 @@ add_executable(soh-o2r-packer EXCLUDE_FROM_ALL
 )
 target_link_libraries(soh-o2r-packer PRIVATE torch)
 
+# On a cross-build the asset tools must run on the build machine, so a second configure of
+# this same tree (SOH_TOOLS_ONLY) builds them for the host and the custom targets below call
+# those binaries instead of the cross-compiled ones.
+set(SOH_TORCH_TOOL $<TARGET_FILE:soh-torch>)
+set(SOH_TORCH_TOOL_DEPENDS soh-torch)
+set(SOH_O2R_PACKER_TOOL $<TARGET_FILE:soh-o2r-packer>)
+set(SOH_O2R_PACKER_TOOL_DEPENDS soh-o2r-packer)
+if(SOH_APPLE_MOBILE)
+    include(ExternalProject)
+    execute_process(COMMAND sw_vers -productVersion
+        OUTPUT_VARIABLE SOH_HOST_MACOS_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ExternalProject_Add(SohToolsHost
+        PREFIX SohToolsHost
+        SOURCE_DIR ${CMAKE_SOURCE_DIR}
+        CMAKE_GENERATOR "Unix Makefiles"
+        CMAKE_ARGS -DSOH_TOOLS_ONLY=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=
+                   -DCMAKE_OSX_SYSROOT=macosx -DCMAKE_OSX_DEPLOYMENT_TARGET=${SOH_HOST_MACOS_VERSION}
+        BUILD_COMMAND ${CMAKE_COMMAND} --build . --target soh-torch soh-o2r-packer
+        INSTALL_COMMAND ""
+    )
+    ExternalProject_Get_Property(SohToolsHost binary_dir)
+    set(SOH_TORCH_TOOL ${binary_dir}/soh-torch)
+    set(SOH_TORCH_TOOL_DEPENDS SohToolsHost)
+    set(SOH_O2R_PACKER_TOOL ${binary_dir}/soh-o2r-packer)
+    set(SOH_O2R_PACKER_TOOL_DEPENDS SohToolsHost)
+endif()
+
 if(MSVC)
     set_target_properties(soh-torch soh-o2r-packer PROPERTIES
         MSVC_RUNTIME_LIBRARY "$<IF:$<CONFIG:Debug>,MultiThreadedDebug,MultiThreaded>")
@@ -312,7 +358,7 @@ set(SOH_ROM_PATH "${CMAKE_SOURCE_DIR}/roms" CACHE STRING "Roms, or directories o
 add_custom_target(
     ExtractAssets
     COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/soh/oot.o2r ${CMAKE_BINARY_DIR}/soh/oot-mq.o2r
-    COMMAND $<TARGET_FILE:soh-torch>
+    COMMAND ${SOH_TORCH_TOOL}
             --src ${CMAKE_CURRENT_SOURCE_DIR}/soh/assets/yml
             --dest ${CMAKE_BINARY_DIR}/soh
             --version ${CMAKE_PROJECT_VERSION}
@@ -320,7 +366,7 @@ add_custom_target(
     # torch caches extraction state next to the archive; drop it so the game's directory stays clean
     COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/soh/torch.hash.yml
     COMMENT "Running asset extraction..."
-    DEPENDS soh-torch
+    DEPENDS ${SOH_TORCH_TOOL_DEPENDS}
     BYPRODUCTS ${CMAKE_BINARY_DIR}/soh/oot.o2r ${CMAKE_BINARY_DIR}/soh/oot-mq.o2r
 )
 
@@ -341,13 +387,13 @@ add_custom_target(
     COMMAND ${CMAKE_COMMAND} -E rm -r -f ${CMAKE_CURRENT_SOURCE_DIR}/soh/assets/custom/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/libultraship/src/fast/shaders/ ${CMAKE_CURRENT_SOURCE_DIR}/soh/assets/custom/shaders/
 
-    COMMAND $<TARGET_FILE:soh-o2r-packer>
+    COMMAND ${SOH_O2R_PACKER_TOOL}
             ${CMAKE_CURRENT_SOURCE_DIR}/soh/assets/custom
             ${CMAKE_BINARY_DIR}/soh/soh.o2r
             ${CMAKE_PROJECT_VERSION}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/soh/soh.o2r ${CMAKE_CURRENT_SOURCE_DIR}/soh.o2r
     COMMENT "Generating soh.o2r..."
-    DEPENDS soh-o2r-packer
+    DEPENDS ${SOH_O2R_PACKER_TOOL_DEPENDS}
     BYPRODUCTS ${CMAKE_SOURCE_DIR}/soh.o2r ${CMAKE_BINARY_DIR}/soh/soh.o2r
 )
 

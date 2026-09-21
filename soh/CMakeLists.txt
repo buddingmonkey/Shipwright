@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
 
-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+if(NOT CMAKE_TOOLCHAIN_FILE MATCHES "ios.toolchain")
+    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+endif()
 
 project(soh LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
     enable_language(OBJCXX)
     set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -fobjc-arc")
     set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
@@ -153,7 +155,7 @@ endif()
 # handle speechsynthesizer removals
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/Darwin")
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/SAPI")
 else()
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/(Darwin|SAPI)")
@@ -256,6 +258,37 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_target_properties(${PROJECT_NAME} PROPERTIES
     OUTPUT_NAME "soh.elf"
     )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in ${CMAKE_BINARY_DIR}/ios/Info.plist @ONLY)
+    target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets)
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets
+        PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_BINARY_DIR}/ios/Info.plist
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${PROJECT_ID}"
+        XCODE_ATTRIBUTE_SKIP_INSTALL "NO"
+        XCODE_ATTRIBUTE_INSTALL_PATH "$(LOCAL_APPS_DIR)"
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
+        XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES
+    )
+    target_compile_definitions(${PROJECT_NAME} PRIVATE __IOS__)
+    if(IOS_DEVELOPMENT_TEAM STREQUAL "")
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
+            XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
+        )
+    endif()
+    set(IOS_SCHEME_CONFIGURATION "Release" CACHE STRING
+        "Build configuration the generated Xcode scheme runs (Debug or Release)")
+    set_property(CACHE IOS_SCHEME_CONFIGURATION PROPERTY STRINGS Debug Release)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        XCODE_GENERATE_SCHEME TRUE
+        XCODE_SCHEME_LAUNCH_CONFIGURATION "${IOS_SCHEME_CONFIGURATION}"
+    )
+    message(STATUS "Xcode scheme '${PROJECT_NAME}' runs the ${IOS_SCHEME_CONFIGURATION} "
+                   "configuration (set IOS_SCHEME_CONFIGURATION to change)")
 endif()
 ################################################################################
 # MSVC runtime library
@@ -297,15 +330,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(dr_libs)
 
-find_package(SDL2)
-set(SDL2-INCLUDE ${SDL2_INCLUDE_DIRS})
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    find_package(SDL2)
+    set(SDL2-INCLUDE ${SDL2_INCLUDE_DIRS})
 
-find_package(SDL2_net)
+    find_package(SDL2_net)
 
-if(NOT SDL2_net_FOUND)
-    message(STATUS "SDL2_net not found (it's possible the version installed is too old).")
-else()
-    set(SDL2-NET-INCLUDE ${SDL_NET_INCLUDE_DIRS})
+    if(NOT SDL2_net_FOUND)
+        message(STATUS "SDL2_net not found (it's possible the version installed is too old).")
+    else()
+        set(SDL2-NET-INCLUDE ${SDL_NET_INCLUDE_DIRS})
+    endif()
 endif()
 
 if (ESPEAK)
@@ -611,6 +646,18 @@ add_custom_command(
     COMMENT "Copying asset ymls..."
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different ${CMAKE_SOURCE_DIR}/soh/assets/yml $<TARGET_FILE_DIR:soh>/assets
 )
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    add_custom_command(
+        TARGET ${PROJECT_NAME}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+                -DBUNDLE=$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>
+                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+                -DBINARY_DIR=${CMAKE_BINARY_DIR}
+                -P ${CMAKE_SOURCE_DIR}/CMake/ios-bundle-resources.cmake
+        COMMENT "Copying SoH resources into the app bundle"
+    )
+endif()
 ################################################################################
 # Dependencies
 ################################################################################
@@ -685,6 +732,70 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
     target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
         ${DEVKITPRO}/portlibs/wiiu/include/
     )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    include(FetchContent)
+    set(BUILD_TESTING OFF)
+    FetchContent_Declare(Ogg
+        GIT_REPOSITORY https://github.com/xiph/ogg.git
+        GIT_TAG v1.3.6
+        OVERRIDE_FIND_PACKAGE)
+    FetchContent_MakeAvailable(Ogg)
+    FetchContent_Declare(Vorbis
+        GIT_REPOSITORY https://github.com/xiph/vorbis.git
+        GIT_TAG v1.3.7
+        OVERRIDE_FIND_PACKAGE)
+    FetchContent_MakeAvailable(Vorbis)
+    set(OPUS_BUILD_TESTING OFF)
+    set(OPUS_BUILD_PROGRAMS OFF)
+    FetchContent_Declare(Opus
+        GIT_REPOSITORY https://github.com/xiph/opus.git
+        GIT_TAG v1.5.2
+        OVERRIDE_FIND_PACKAGE)
+    FetchContent_MakeAvailable(Opus)
+    set(OP_DISABLE_HTTP ON)
+    set(OP_DISABLE_EXAMPLES ON)
+    set(OP_DISABLE_DOCS ON)
+    FetchContent_Declare(OpusFile
+        GIT_REPOSITORY https://github.com/xiph/opusfile.git
+        GIT_TAG v0.12
+        OVERRIDE_FIND_PACKAGE)
+    FetchContent_MakeAvailable(OpusFile)
+    set(SDL2NET_INSTALL OFF)
+    FetchContent_Declare(SDL2_net
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL_net.git
+        GIT_TAG release-2.2.0
+        OVERRIDE_FIND_PACKAGE)
+    FetchContent_MakeAvailable(SDL2_net)
+    if(TARGET SDL2_net::SDL2_net-static)
+        set(SOH_SDL2_NET_TARGET SDL2_net::SDL2_net-static)
+    else()
+        set(SOH_SDL2_NET_TARGET SDL2_net::SDL2_net)
+    endif()
+    if(TARGET SDL2::SDL2-static)
+        set(SOH_SDL2_TARGET SDL2::SDL2-static)
+    else()
+        set(SOH_SDL2_TARGET SDL2::SDL2)
+    endif()
+    set(ADDITIONAL_LIBRARY_DEPENDENCIES "")
+    foreach(framework UIKit GameController CoreHaptics CoreMotion CoreGraphics AVFoundation)
+        find_library(IOS_FW_${framework} ${framework} REQUIRED)
+        list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES ${IOS_FW_${framework}})
+    endforeach()
+    list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
+        "libultraship;"
+        "torch;"
+        ${SOH_SDL2_TARGET}
+        ogg
+        vorbis
+        vorbisenc
+        vorbisfile
+        opus
+        opusfile
+        ${SOH_SDL2_NET_TARGET}
+        Threads::Threads
+    )
 else()
     find_package(SDL2)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -744,7 +855,7 @@ if(USE_ASAN)
 endif()
 
 
-if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|NintendoSwitch|CafeOS")
+if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|NintendoSwitch|CafeOS|iOS")
 INSTALL(TARGETS soh DESTINATION . COMPONENT ship)
 endif()
 
@@ -761,7 +872,7 @@ configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/macosx/Info.plist.in ${CMAKE_BINARY_
 INSTALL(TARGETS soh DESTINATION ../MacOS COMPONENT ship)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION ../MacOS COMPONENT ship)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/soh/soh.o2r DESTINATION ../Resources COMPONENT ship)
-elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "NintendoSwitch|CafeOS")
+elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "NintendoSwitch|CafeOS|iOS")
 INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION . COMPONENT ship)
 endif()
 
