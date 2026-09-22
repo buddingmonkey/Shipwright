@@ -1,6 +1,12 @@
 // vim: ft=cpp
 #pragma once
 
+#ifdef __IOS__
+#define SOH_DEFAULT_MATCH_REFRESH_RATE 1
+#else
+#define SOH_DEFAULT_MATCH_REFRESH_RATE 0
+#endif
+
 #define BTN_CUSTOM_MODIFIER1 0x0040
 #define BTN_CUSTOM_MODIFIER2 0x0080
 

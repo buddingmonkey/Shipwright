@@ -2,6 +2,7 @@
 #include <ship/Context.h>
 
 #include "SohMenu.h"
+#include "soh/OTRGlobals.h"
 
 extern "C" {
 extern PlayState* gPlayState;
@@ -133,7 +134,9 @@ void SohMenu::InitElement() {
            },
             "Not Available on DirectX" } },
         { DISABLE_FOR_MATCH_REFRESH_RATE_ON,
-          { [](disabledInfo& info) -> bool { return CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), 0); },
+          { [](disabledInfo& info) -> bool {
+               return CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), SOH_DEFAULT_MATCH_REFRESH_RATE);
+           },
             "Match Refresh Rate is Enabled" } },
         { DISABLE_FOR_ADVANCED_RESOLUTION_ON,
           { [](disabledInfo& info) -> bool { return CVarGetInteger(CVAR_PREFIX_ADVANCED_RESOLUTION ".Enabled", 0); },

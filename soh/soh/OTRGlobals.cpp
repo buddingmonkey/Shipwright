@@ -1107,7 +1107,7 @@ bool OTRGlobals::HasOriginal() {
 }
 
 uint32_t OTRGlobals::GetInterpolationFPS() {
-    if (CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), 0)) {
+    if (CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), SOH_DEFAULT_MATCH_REFRESH_RATE)) {
         return Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate();
     } else if (CVarGetInteger(CVAR_VSYNC_ENABLED, 1) ||
                !Ship::Context::GetRawInstance()->GetWindow()->CanDisableVerticalSync()) {
@@ -1890,7 +1890,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         const auto now = std::chrono::steady_clock::now();
         const auto gapMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - sLastFrame).count();
         sLastFrame = now;
-        if (gapMs > 25 && gapMs < 2000) {
+        if (gapMs > 80 && gapMs < 2000) {
             SPDLOG_INFO("slow frame: {} ms between RunCommands", gapMs);
         }
     }
