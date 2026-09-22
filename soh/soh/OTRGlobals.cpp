@@ -59,6 +59,7 @@
 #endif
 
 #include <fast/interpreter.h>
+#include "soh/ShaderPrewarm.h"
 
 #ifdef __APPLE__
 #include <SDL_scancode.h>
@@ -369,6 +370,10 @@ OTRGlobals::OTRGlobals() {
     sohFast3dWindow =
         std::make_shared<Fast::Fast3dWindow>(std::vector<std::shared_ptr<Ship::GuiWindow>>({ sohInputEditorWindow }));
     context->InitWindow(sohFast3dWindow);
+
+    if (auto intp = sohFast3dWindow->GetInterpreterWeak().lock()) {
+        intp->PrewarmShaders(kSohShaderPrewarmList, sizeof(kSohShaderPrewarmList) / sizeof(kSohShaderPrewarmList[0]));
+    }
 
     SohGui::SetupMenu();
 
