@@ -1879,6 +1879,18 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     ParkWhileOffScreen();
 #endif
 
+#ifdef ENABLE_DEBUG_TOOLS
+    {
+        static auto sLastFrame = std::chrono::steady_clock::now();
+        const auto now = std::chrono::steady_clock::now();
+        const auto gapMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - sLastFrame).count();
+        sLastFrame = now;
+        if (gapMs > 25 && gapMs < 2000) {
+            SPDLOG_INFO("slow frame: {} ms between RunCommands", gapMs);
+        }
+    }
+#endif
+
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
 

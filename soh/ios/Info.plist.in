@@ -43,6 +43,10 @@
     </dict>
     <key>UIRequiresFullScreen</key>
     <true/>
+    <!-- iPadOS 26 windowing stops enforcing orientation locks; this keeps the
+         pre-26 fullscreen behavior so the landscape-only keys hold. -->
+    <key>UIDesignRequiresCompatibility</key>
+    <true/>
     <key>UIStatusBarHidden</key>
     <true/>
     <key>UIViewControllerBasedStatusBarAppearance</key>
