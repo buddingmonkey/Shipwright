@@ -37,6 +37,7 @@ bool TouchControls_Active() {
 
 #include <SDL2/SDL.h>
 #include <imgui.h>
+#include <spdlog/spdlog.h>
 #include <fast/Fast3dWindow.h>
 #ifdef ENABLE_XR_WINDOW
 #include <fast/backends/gfx_xr_view.h>
@@ -907,6 +908,18 @@ void TouchControls_Draw() {
             dl->AddRectFilled(ImVec2(center.x - barHalfW, y - barHalfH), ImVec2(center.x + barHalfW, y + barHalfH),
                               barShade, barHalfH);
         }
+    }
+
+    static bool sLoggedOnce = false;
+    if (!sLoggedOnce) {
+        sLoggedOnce = true;
+        SPDLOG_INFO("TouchControls first draw: active={} menuVisible={} headset={} gamepad={} hideCvar={} "
+                    "display={}x{} aspect={} stickBase=({},{}) aCenter=({},{}) aEnabled={} aRadius={}",
+                    SoH::TouchControls_Active(), MenuVisible(), IsHeadsetWindow(), sGamepadPresent,
+                    CVarGetInteger(CVAR_TOUCH("HideWithGamepad"), 1), io.DisplaySize.x, io.DisplaySize.y,
+                    io.DisplaySize.x / io.DisplaySize.y, sState.stickBase.x, sState.stickBase.y,
+                    sLayout.buttons[CTRL_A].center.x, sLayout.buttons[CTRL_A].center.y,
+                    sLayout.buttons[CTRL_A].enabled, sLayout.buttons[CTRL_A].radius);
     }
 
     if (!PadActive()) {
