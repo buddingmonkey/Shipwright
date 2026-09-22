@@ -1637,6 +1637,9 @@ static void RunShaderPrewarm() {
     constexpr size_t total = sizeof(kSohShaderPrewarmList) / sizeof(kSohShaderPrewarmList[0]);
     size_t done = 0;
     const auto started = std::chrono::steady_clock::now();
+    while (done < total && std::chrono::steady_clock::now() - started < std::chrono::milliseconds(400)) {
+        done = intp->PrewarmShadersSlice(kSohShaderPrewarmList, total, done, 50);
+    }
     while (done < total) {
         if (!WindowIsRunning()) {
             ShutdownAndExit(0);
