@@ -284,11 +284,14 @@ static std::atomic<bool> sAppOnScreen{ true };
 static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
     switch (event->type) {
         case SDL_APP_WILLENTERBACKGROUND: {
-            sAppOnScreen = false;
             auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
             if (audio != nullptr) {
                 audio->SuspendPlayback();
             }
+            break;
+        }
+        case SDL_APP_DIDENTERBACKGROUND: {
+            sAppOnScreen = false;
             break;
         }
         case SDL_APP_DIDENTERFOREGROUND: {
