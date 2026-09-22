@@ -284,6 +284,7 @@ static std::atomic<bool> sAppOnScreen{ true };
 static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
     switch (event->type) {
         case SDL_APP_WILLENTERBACKGROUND: {
+            SPDLOG_INFO("lifecycle: will-resign-active");
             auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
             if (audio != nullptr) {
                 audio->SuspendPlayback();
@@ -291,10 +292,16 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
             break;
         }
         case SDL_APP_DIDENTERBACKGROUND: {
+            SPDLOG_INFO("lifecycle: did-enter-background");
             sAppOnScreen = false;
             break;
         }
+        case SDL_APP_WILLENTERFOREGROUND: {
+            SPDLOG_INFO("lifecycle: will-enter-foreground");
+            break;
+        }
         case SDL_APP_DIDENTERFOREGROUND: {
+            SPDLOG_INFO("lifecycle: did-become-active");
             auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
             if (audio != nullptr) {
                 audio->ResumePlayback();
