@@ -771,6 +771,10 @@ void Menu::DrawElement() {
         ImGui::PopStyleColor();
     }
     ImGui::EndChild();
+#ifdef __IOS__
+    ImGui::SameLine(menuSize.x - (buttonSize.x * 2) - style.ItemSpacing.x);
+    ImGui::PopStyleVar();
+#else
     ImGui::SameLine(menuSize.x - (buttonSize.x * 3) - (style.ItemSpacing.x * 2));
     UIWidgets::ButtonOptions options3 = {};
     options3.color = UIWidgets::Colors::Red;
@@ -791,6 +795,7 @@ void Menu::DrawElement() {
     }
     ImGui::PopStyleVar();
     ImGui::SameLine();
+#endif
     UIWidgets::ButtonOptions options2 = {};
     options2.color = UIWidgets::Colors::Red;
     options2.size = UIWidgets::Sizes::Inline;
