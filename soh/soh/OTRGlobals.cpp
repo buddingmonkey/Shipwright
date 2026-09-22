@@ -1925,6 +1925,12 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
 
     audio.cv_to_thread.notify_one();
     int target_fps = OTRGlobals::Instance->GetInterpolationFPS();
+    static int lastLoggedTarget = -1;
+    if (target_fps != lastLoggedTarget) {
+        lastLoggedTarget = target_fps;
+        SPDLOG_INFO("Interpolation target {} fps (display reports {} Hz)", target_fps,
+                    Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate());
+    }
     static int last_fps;
     static int last_update_rate;
     static int time;
