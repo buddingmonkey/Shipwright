@@ -6,6 +6,8 @@
 #include "debugconsole.h"
 #include "savestates.h"
 #include "soh/ActorDB.h"
+#include <filesystem>
+#include <fstream>
 #include "soh/OTRGlobals.h"
 #include <soh/Enhancements/item-tables/ItemTableManager.h>
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
@@ -1505,7 +1507,45 @@ static bool AvailableChecksRecalculateHandler(std::shared_ptr<Ship::Console> Con
     return 0;
 }
 
+#ifdef ENABLE_DEBUG_TOOLS
+static void DebugWarpPoll() {
+    static int countdown = 0;
+    if (--countdown > 0) {
+        return;
+    }
+    countdown = 20;
+    static std::filesystem::file_time_type stamp;
+    static bool hasStamp = false;
+    std::error_code ec;
+    const std::string path = Ship::Context::GetPathRelativeToAppDirectory("debug-warp");
+    const auto t = std::filesystem::last_write_time(path, ec);
+    if (ec || (hasStamp && t == stamp)) {
+        return;
+    }
+    stamp = t;
+    hasStamp = true;
+    std::ifstream file(path);
+    std::string line;
+    std::getline(file, line);
+    if (line.empty() || gPlayState == nullptr) {
+        return;
+    }
+    unsigned int entrance = 0;
+    try {
+        entrance = std::stoi(line, nullptr, 16);
+    } catch (...) { return; }
+    gPlayState->nextEntranceIndex = entrance;
+    gPlayState->transitionTrigger = TRANS_TRIGGER_START;
+    gPlayState->transitionType = TRANS_TYPE_INSTANT;
+    gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
+    SPDLOG_INFO("debug-warp to entrance {:x}", entrance);
+}
+#endif
+
 void DebugConsole_Init(void) {
+#ifdef ENABLE_DEBUG_TOOLS
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameFrameUpdate>(DebugWarpPoll);
+#endif
     // Console
     CMD_REGISTER("file_select", { FileSelectHandler, "Returns to the file select." });
     CMD_REGISTER("reset", { ResetHandler, "Resets the game." });
