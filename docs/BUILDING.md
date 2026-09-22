@@ -295,6 +295,55 @@ cmake --build build-cmake --target clean
 cmake --build build-cmake --target ExtractAssetHeaders
 ```
 
+## iOS
+
+Requires a Mac with Xcode 15 or newer. `IOS_DEVELOPMENT_TEAM` is your 10-character Apple
+Developer Team ID, from <https://developer.apple.com/account>, and `PROJECT_ID` a bundle
+identifier your team owns. A free Apple ID works, added under Xcode > Settings > Accounts,
+but its profiles expire after 7 days. Leave the team unset to compile without an Apple
+account.
+
+**CMake generates the Xcode project. Xcode builds it.** Use CMake once to make the project,
+then work in Xcode. That is the only path that signs the app and puts it on a device; a
+terminal `cmake --build` proves that a change compiles, and its exit status does not report
+Xcode failures reliably.
+
+```bash
+# Clone the repo with submodules
+git clone --recursive https://github.com/HarbourMasters/Shipwright.git
+cd Shipwright
+
+# Generate the Xcode project. CMAKE_IGNORE_PREFIX_PATH keeps Homebrew/MacPorts
+# libraries out of the cross-build; they are the wrong architecture for iOS.
+cmake -S . -B build-ios -G Xcode \
+  -DCMAKE_TOOLCHAIN_FILE=CMake/ios.toolchain.cmake \
+  -DPLATFORM=OS64 \
+  -DDEPLOYMENT_TARGET=16.0 \
+  -DCMAKE_IGNORE_PREFIX_PATH="/opt/homebrew;/usr/local;/opt/local" \
+  -DPROJECT_ID=com.yourname.soh \
+  -DIOS_DEVELOPMENT_TEAM=YOURTEAMID
+
+# Generate soh.o2r (port-specific assets). This builds the asset tools for the
+# host through a nested configure and bundles the archive into the app.
+cmake --build build-ios --config Release --target GenerateSohOtr
+
+open build-ios/Ship.xcodeproj
+```
+
+In Xcode: select the **soh** scheme, choose your device at the top, and press **Run** (⌘R).
+The first run asks the device to trust the developer; accept it in *Settings > General >
+VPN & Device Management* on the device.
+
+Give the app a ROM by copying it into the app's folder in the **Files** app (On My iPad >
+Ship of Harkinian), then launch. The first run extracts the ROM and compiles shaders behind
+progress screens; both are one-time costs.
+
+The generated scheme builds **Release** by default. A Debug app makes on-device asset
+extraction far slower; change `IOS_SCHEME_CONFIGURATION` only when you need a debugger.
+
+For the Simulator, configure a second build directory with `-DPLATFORM=SIMULATORARM64`
+and install the built app with `xcrun simctl install`.
+
 ## Switch
 1. Requires that your build machine is setup with the tools necessary for your platform above
 2. Requires that you have the switch build tools installed
