@@ -1625,13 +1625,72 @@ bool VerifyArchiveVersion(OTRVersion version) {
     return version.major != INT16_MAX && version.major != gBuildVersionMajor;
 }
 
+static void RunShaderPrewarm() {
+    if (sohFast3dWindow == nullptr) {
+        return;
+    }
+    auto intp = sohFast3dWindow->GetInterpreterWeak().lock();
+    auto gui = OTRGlobals::Instance->context->GetWindow()->GetGui();
+    if (intp == nullptr || gui == nullptr) {
+        return;
+    }
+    constexpr size_t total = sizeof(kSohShaderPrewarmList) / sizeof(kSohShaderPrewarmList[0]);
+    size_t done = 0;
+    const auto started = std::chrono::steady_clock::now();
+    while (done < total) {
+        if (!WindowIsRunning()) {
+            ShutdownAndExit(0);
+        }
+#ifdef __IOS__
+        ParkWhileOffScreen();
+#endif
+        sohFast3dWindow->HandleEvents();
+        if (!sohFast3dWindow->IsFrameReady()) {
+            continue;
+        }
+        UIWidgets::Colors themeColor =
+            static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
+        ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, UIWidgets::ColorValues.at(UIWidgets::Colors::DarkGray));
+        gui->StartDraw();
+        sohFast3dWindow->StartFrame();
+        sohFast3dWindow->RunGuiOnly();
+        if (!ImGui::IsPopupOpen("Preparing Shaders")) {
+            ImGui::OpenPopup("Preparing Shaders");
+        }
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
+        auto color = UIWidgets::ColorValues.at(THEME_COLOR);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(color.x, color.y, color.z, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
+        if (ImGui::BeginPopupModal("Preparing Shaders", NULL,
+                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
+                                       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                       ImGuiWindowFlags_NoSavedSettings)) {
+            float progress = total > 0 ? (float)done / (float)total * 100.0f : 0.0f;
+            ImGui::Text("Compiling shaders for this device...%s",
+                        roundf(progress) == 100.0f ? " Done. Finishing up." : "");
+            std::string overlay = spdlog::fmt_lib::format("{:.0f}%", progress);
+            ImGui::ProgressBar(progress / 100.0f, ImVec2(600.0f, 50.0f), overlay.c_str());
+            ImGui::EndPopup();
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(2);
+        gui->EndDraw();
+        sohFast3dWindow->EndFrame();
+        ImGui::PopStyleColor(2);
+        done = intp->PrewarmShadersSlice(kSohShaderPrewarmList, total, done, 25);
+    }
+    SPDLOG_INFO(
+        "Prewarmed {} shader programs in {} ms", total,
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count());
+}
+
 extern "C" void InitOTR(int argc, char* argv[]) {
     OTRGlobals::Instance = new OTRGlobals();
     OTRGlobals::Instance->RunExtract(argc, argv);
-
-    if (auto intp = sohFast3dWindow->GetInterpreterWeak().lock()) {
-        intp->PrewarmShaders(kSohShaderPrewarmList, sizeof(kSohShaderPrewarmList) / sizeof(kSohShaderPrewarmList[0]));
-    }
+    RunShaderPrewarm();
 
     OTRGlobals::Instance->Initialize();
     CustomMessageManager::Instance = new CustomMessageManager();
