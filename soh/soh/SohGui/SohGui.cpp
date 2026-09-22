@@ -8,6 +8,9 @@
 #include <imgui.h>
 
 #include "SohGui.hpp"
+#ifdef SOH_TOUCH_CONTROLS
+#include "soh/TouchControls/TouchControls.h"
+#endif
 
 #ifdef __APPLE__
 #include <fast/backends/gfx_metal.h>
@@ -86,6 +89,9 @@ std::shared_ptr<SohMenu> mSohMenu;
 std::shared_ptr<ModMenuWindow> mModMenuWindow;
 std::shared_ptr<AudioEditor> mAudioEditorWindow;
 std::shared_ptr<InputViewer> mInputViewer;
+#ifdef SOH_TOUCH_CONTROLS
+std::shared_ptr<TouchControlsWindow> mTouchControlsWindow;
+#endif
 std::shared_ptr<InputViewerSettingsWindow> mInputViewerSettings;
 std::shared_ptr<CosmeticsEditorWindow> mCosmeticsEditorWindow;
 std::shared_ptr<ActorViewerWindow> mActorViewerWindow;
@@ -158,6 +164,10 @@ void SetupGuiElements() {
     gui->AddGuiWindow(mAudioEditorWindow);
     mInputViewer = std::make_shared<InputViewer>(CVAR_WINDOW("InputViewer"), "Input Viewer");
     gui->AddGuiWindow(mInputViewer);
+#ifdef SOH_TOUCH_CONTROLS
+    mTouchControlsWindow = std::make_shared<TouchControlsWindow>("", true, "On-Screen Controls");
+    gui->AddGuiWindow(mTouchControlsWindow);
+#endif
     mInputViewerSettings = std::make_shared<InputViewerSettingsWindow>(CVAR_WINDOW("InputViewerSettings"),
                                                                        "Input Viewer Settings", ImVec2(500, 525));
     gui->AddGuiWindow(mInputViewerSettings);
