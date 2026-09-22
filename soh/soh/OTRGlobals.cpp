@@ -352,6 +352,12 @@ OTRGlobals::OTRGlobals() {
     context->InitConfiguration();
     context->InitConsoleVariables();
 
+#ifdef __IOS__
+    if (CVarGetInteger(CVAR_MSAA_VALUE, 0) == 0) {
+        CVarSetInteger(CVAR_MSAA_VALUE, SOH_DEFAULT_MSAA);
+    }
+#endif
+
     auto controlDeck = std::make_shared<LUS::ControlDeck>(std::vector<CONTROLLERBUTTONS_T>({
         BTN_CUSTOM_MODIFIER1,
         BTN_CUSTOM_MODIFIER2,

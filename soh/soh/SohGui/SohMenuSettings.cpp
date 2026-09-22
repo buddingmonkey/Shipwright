@@ -376,7 +376,7 @@ void SohMenu::AddMenuSettings() {
                          "Higher sample count will result in smoother edges on models, but may reduce performance.")
                 .Min(1)
                 .Max(8)
-                .DefaultValue(1));
+                .DefaultValue(SOH_DEFAULT_MSAA));
 #endif
     auto fps = CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 20);
     const char* fpsFormat = fps == 20 ? "Original (%d)" : "%d";
