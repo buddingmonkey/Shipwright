@@ -371,10 +371,6 @@ OTRGlobals::OTRGlobals() {
         std::make_shared<Fast::Fast3dWindow>(std::vector<std::shared_ptr<Ship::GuiWindow>>({ sohInputEditorWindow }));
     context->InitWindow(sohFast3dWindow);
 
-    if (auto intp = sohFast3dWindow->GetInterpreterWeak().lock()) {
-        intp->PrewarmShaders(kSohShaderPrewarmList, sizeof(kSohShaderPrewarmList) / sizeof(kSohShaderPrewarmList[0]));
-    }
-
     SohGui::SetupMenu();
 
     if (sohArchiveVersionMatch) {
@@ -1632,6 +1628,10 @@ bool VerifyArchiveVersion(OTRVersion version) {
 extern "C" void InitOTR(int argc, char* argv[]) {
     OTRGlobals::Instance = new OTRGlobals();
     OTRGlobals::Instance->RunExtract(argc, argv);
+
+    if (auto intp = sohFast3dWindow->GetInterpreterWeak().lock()) {
+        intp->PrewarmShaders(kSohShaderPrewarmList, sizeof(kSohShaderPrewarmList) / sizeof(kSohShaderPrewarmList[0]));
+    }
 
     OTRGlobals::Instance->Initialize();
     CustomMessageManager::Instance = new CustomMessageManager();
