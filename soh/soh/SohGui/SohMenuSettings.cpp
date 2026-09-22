@@ -376,7 +376,7 @@ void SohMenu::AddMenuSettings() {
                          "Higher sample count will result in smoother edges on models, but may reduce performance.")
                 .Min(1)
                 .Max(8)
-                .DefaultValue(1));
+                .DefaultValue(SOH_DEFAULT_MSAA));
 #endif
     auto fps = CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 20);
     const char* fpsFormat = fps == 20 ? "Original (%d)" : "%d";
@@ -400,7 +400,9 @@ void SohMenu::AddMenuSettings() {
     AddWidget(path, "Match Refresh Rate", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_SETTING("MatchRefreshRate"))
         .RaceDisable(false)
-        .Options(CheckboxOptions().Tooltip("Matches interpolation value to the refresh rate of your display."));
+        .Options(CheckboxOptions()
+                     .DefaultValue(SOH_DEFAULT_MATCH_REFRESH_RATE)
+                     .Tooltip("Matches interpolation value to the refresh rate of your display."));
     AddWidget(path, "Renderer API (Needs reload)", WIDGET_VIDEO_BACKEND).RaceDisable(false);
     AddWidget(path, "Enable Vsync", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_VSYNC_ENABLED)

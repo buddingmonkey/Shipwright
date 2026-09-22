@@ -350,6 +350,12 @@ OTRGlobals::OTRGlobals() {
     context->InitConfiguration();
     context->InitConsoleVariables();
 
+#ifdef __IOS__
+    if (CVarGetInteger(CVAR_MSAA_VALUE, 0) == 0) {
+        CVarSetInteger(CVAR_MSAA_VALUE, SOH_DEFAULT_MSAA);
+    }
+#endif
+
     auto controlDeck = std::make_shared<LUS::ControlDeck>(std::vector<CONTROLLERBUTTONS_T>({
         BTN_CUSTOM_MODIFIER1,
         BTN_CUSTOM_MODIFIER2,
@@ -1104,7 +1110,7 @@ bool OTRGlobals::HasOriginal() {
 }
 
 uint32_t OTRGlobals::GetInterpolationFPS() {
-    if (CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), 0)) {
+    if (CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), SOH_DEFAULT_MATCH_REFRESH_RATE)) {
         return Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate();
     } else if (CVarGetInteger(CVAR_VSYNC_ENABLED, 1) ||
                !Ship::Context::GetRawInstance()->GetWindow()->CanDisableVerticalSync()) {
@@ -2025,6 +2031,12 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
 
     audio.cv_to_thread.notify_one();
     int target_fps = OTRGlobals::Instance->GetInterpolationFPS();
+    static int lastLoggedTarget = -1;
+    if (target_fps != lastLoggedTarget) {
+        lastLoggedTarget = target_fps;
+        SPDLOG_INFO("Interpolation target {} fps (display reports {} Hz)", target_fps,
+                    Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate());
+    }
     static int last_fps;
     static int last_update_rate;
     static int time;
