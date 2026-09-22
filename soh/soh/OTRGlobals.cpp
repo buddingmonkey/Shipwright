@@ -332,7 +332,10 @@ OTRGlobals::OTRGlobals() {
     context = Ship::Context::CreateUninitializedInstance("Ship of Harkinian", appShortName, "shipofharkinian.json");
 
 #ifdef __IOS__
+    SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
+    SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2");
     SDL_AddEventWatch(AppLifecycleWatch, nullptr);
 #endif
 
