@@ -828,6 +828,9 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 #endif
         // Process window events for resize, mouse, keyboard events
         wnd->HandleEvents();
+        if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
+            continue;
+        }
         UIWidgets::Colors themeColor =
             static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
@@ -1664,7 +1667,7 @@ static void RunShaderPrewarm() {
         ParkWhileOffScreen();
 #endif
         sohFast3dWindow->HandleEvents();
-        if (!sohFast3dWindow->IsFrameReady()) {
+        if (!sohFast3dWindow->IsFrameReady() || sohFast3dWindow->GetWidth() == 0 || sohFast3dWindow->GetHeight() == 0) {
             continue;
         }
         UIWidgets::Colors themeColor =
@@ -1976,6 +1979,10 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
 
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
+
+    if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
+        return;
+    }
 
     auto intp = wnd->GetInterpreterWeak().lock().get();
     intp->mInterpolationIndex = 0;
