@@ -281,18 +281,29 @@ static bool sohArchiveVersionMatch = false;
 
 #ifdef __IOS__
 static std::atomic<bool> sAppOnScreen{ true };
+static std::atomic<bool> sWindowMinimized{ false };
 
 static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
     switch (event->type) {
         case SDL_APP_WILLENTERBACKGROUND: {
-            sAppOnScreen = false;
+            SPDLOG_INFO("lifecycle: will-resign-active");
             auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
             if (audio != nullptr) {
                 audio->SuspendPlayback();
             }
             break;
         }
+        case SDL_APP_DIDENTERBACKGROUND: {
+            SPDLOG_INFO("lifecycle: did-enter-background");
+            sAppOnScreen = false;
+            break;
+        }
+        case SDL_APP_WILLENTERFOREGROUND: {
+            SPDLOG_INFO("lifecycle: will-enter-foreground");
+            break;
+        }
         case SDL_APP_DIDENTERFOREGROUND: {
+            SPDLOG_INFO("lifecycle: did-become-active");
             auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
             if (audio != nullptr) {
                 audio->ResumePlayback();
@@ -309,6 +320,14 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
             SPDLOG_WARN("Memory warning: dropped the texture cache");
             break;
         }
+        case SDL_WINDOWEVENT: {
+            if (event->window.event == SDL_WINDOWEVENT_MINIMIZED) {
+                sWindowMinimized = true;
+            } else if (event->window.event == SDL_WINDOWEVENT_RESTORED) {
+                sWindowMinimized = false;
+            }
+            break;
+        }
         case SDL_APP_TERMINATING: {
             SPDLOG_CRITICAL("System terminated the app");
             if (auto logger = spdlog::default_logger()) {
@@ -323,7 +342,7 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
 }
 
 static void ParkWhileOffScreen() {
-    while (!sAppOnScreen) {
+    while (!sAppOnScreen || sWindowMinimized) {
         SDL_PumpEvents();
         SDL_Delay(50);
     }
@@ -819,6 +838,15 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 #endif
         // Process window events for resize, mouse, keyboard events
         wnd->HandleEvents();
+        if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
+            continue;
+        }
+#ifdef __IOS__
+        if (sWindowMinimized) {
+            SDL_Delay(50);
+            continue;
+        }
+#endif
         UIWidgets::Colors themeColor =
             static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
@@ -1655,9 +1683,15 @@ static void RunShaderPrewarm() {
         ParkWhileOffScreen();
 #endif
         sohFast3dWindow->HandleEvents();
-        if (!sohFast3dWindow->IsFrameReady()) {
+        if (!sohFast3dWindow->IsFrameReady() || sohFast3dWindow->GetWidth() == 0 || sohFast3dWindow->GetHeight() == 0) {
             continue;
         }
+#ifdef __IOS__
+        if (sWindowMinimized) {
+            SDL_Delay(50);
+            continue;
+        }
+#endif
         UIWidgets::Colors themeColor =
             static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
@@ -1986,10 +2020,6 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         return;
     }
 
-#ifdef __IOS__
-    ParkWhileOffScreen();
-#endif
-
 #ifdef ENABLE_DEBUG_TOOLS
     {
         static auto sLastFrame = std::chrono::steady_clock::now();
@@ -2005,6 +2035,14 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
 
+#ifdef __IOS__
+    ParkWhileOffScreen();
+#endif
+
+    if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
+        return;
+    }
+
     auto intp = wnd->GetInterpreterWeak().lock().get();
     intp->mInterpolationIndex = 0;
 
@@ -2012,6 +2050,11 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
     for (int i = 0; i < count; i++) {
+#ifdef __IOS__
+        if (sWindowMinimized) {
+            break;
+        }
+#endif
         time += step;
         std::unordered_map<Mtx*, MtxF> mtx_replacements =
             (time == denom) ? std::unordered_map<Mtx*, MtxF>() : FrameInterpolation_Interpolate((float)time / denom);
