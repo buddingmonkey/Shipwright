@@ -341,7 +341,7 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
 }
 
 static void ParkWhileOffScreen() {
-    while (!sAppOnScreen) {
+    while (!sAppOnScreen || sWindowMinimized) {
         SDL_PumpEvents();
         SDL_Delay(50);
     }
@@ -2004,11 +2004,6 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
         return;
     }
-#ifdef __IOS__
-    if (sWindowMinimized) {
-        return;
-    }
-#endif
 
     auto intp = wnd->GetInterpreterWeak().lock().get();
     intp->mInterpolationIndex = 0;
