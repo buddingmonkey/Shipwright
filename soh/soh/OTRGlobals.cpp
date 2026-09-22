@@ -66,6 +66,10 @@
 #include <SDL2/SDL_scancode.h>
 #endif
 
+#ifdef __IOS__
+#include <SDL.h>
+#endif
+
 #ifdef __SWITCH__
 #include <port/switch/SwitchImpl.h>
 #elif defined(__WIIU__)
@@ -273,8 +277,64 @@ static bool VerifyArchiveVersion(OTRVersion version);
 std::string portArchivePath = "";
 static bool sohArchiveVersionMatch = false;
 
+#ifdef __IOS__
+static std::atomic<bool> sAppOnScreen{ true };
+
+static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
+    switch (event->type) {
+        case SDL_APP_WILLENTERBACKGROUND: {
+            sAppOnScreen = false;
+            auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
+            if (audio != nullptr) {
+                audio->SuspendPlayback();
+            }
+            break;
+        }
+        case SDL_APP_DIDENTERFOREGROUND: {
+            auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
+            if (audio != nullptr) {
+                audio->ResumePlayback();
+            }
+            sAppOnScreen = true;
+            break;
+        }
+        case SDL_APP_LOWMEMORY: {
+            if (sohFast3dWindow != nullptr) {
+                if (auto intp = sohFast3dWindow->GetInterpreterWeak().lock()) {
+                    intp->TextureCacheClear();
+                }
+            }
+            SPDLOG_WARN("Memory warning: dropped the texture cache");
+            break;
+        }
+        case SDL_APP_TERMINATING: {
+            SPDLOG_CRITICAL("System terminated the app");
+            if (auto logger = spdlog::default_logger()) {
+                logger->flush();
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    return 0;
+}
+
+static void ParkWhileOffScreen() {
+    while (!sAppOnScreen) {
+        SDL_PumpEvents();
+        SDL_Delay(50);
+    }
+}
+#endif
+
 OTRGlobals::OTRGlobals() {
     context = Ship::Context::CreateUninitializedInstance("Ship of Harkinian", appShortName, "shipofharkinian.json");
+
+#ifdef __IOS__
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_AddEventWatch(AppLifecycleWatch, nullptr);
+#endif
 
     portArchivePath = Ship::Context::LocateFileAcrossAppDirs("soh.o2r");
     OTRVersion portArchiveVersion = DetectOTRVersion("soh.o2r", false);
@@ -743,6 +803,9 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
         if (!WindowIsRunning()) {
             ShutdownAndExit(0, &threadPool);
         }
+#ifdef __IOS__
+        ParkWhileOffScreen();
+#endif
         // Process window events for resize, mouse, keyboard events
         wnd->HandleEvents();
         UIWidgets::Colors themeColor =
@@ -1808,6 +1871,10 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     if (wnd == nullptr) {
         return;
     }
+
+#ifdef __IOS__
+    ParkWhileOffScreen();
+#endif
 
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
