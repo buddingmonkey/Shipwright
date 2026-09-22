@@ -2012,6 +2012,11 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
     for (int i = 0; i < count; i++) {
+#ifdef __IOS__
+        if (sWindowMinimized) {
+            break;
+        }
+#endif
         time += step;
         std::unordered_map<Mtx*, MtxF> mtx_replacements =
             (time == denom) ? std::unordered_map<Mtx*, MtxF>() : FrameInterpolation_Interpolate((float)time / denom);
