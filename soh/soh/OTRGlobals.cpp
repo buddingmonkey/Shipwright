@@ -1982,10 +1982,6 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         return;
     }
 
-#ifdef __IOS__
-    ParkWhileOffScreen();
-#endif
-
 #ifdef ENABLE_DEBUG_TOOLS
     {
         static auto sLastFrame = std::chrono::steady_clock::now();
@@ -2000,6 +1996,10 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
 
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
+
+#ifdef __IOS__
+    ParkWhileOffScreen();
+#endif
 
     if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
         return;
