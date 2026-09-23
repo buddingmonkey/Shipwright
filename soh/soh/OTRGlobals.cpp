@@ -535,6 +535,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
     std::atomic<size_t> extractCount = 0, totalExtract = 0;
 
     std::string installPath = std::filesystem::absolute(Ship::Context::GetAppBundlePath()).string();
+#ifdef __ANDROID__
+    if (const char* internal = SDL_AndroidGetInternalStoragePath()) {
+        installPath = internal;
+    }
+#endif
     std::string dataPath = std::filesystem::absolute(Ship::Context::GetAppDirectoryPath(appShortName)).string();
     std::string file;
 

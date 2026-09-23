@@ -19,12 +19,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import android.content.res.AssetManager;
 
 import org.libsdl.app.SDLActivity;
 
@@ -37,8 +38,7 @@ public class SohActivity extends SDLActivity {
         "assets",
         "gamecontrollerdb.txt",
     };
-
-    private volatile File dataDir;
+    private static final String INTERNAL_ROOT = "assets";
 
     @Override
     protected String[] getLibraries() {
@@ -47,9 +47,8 @@ public class SohActivity extends SDLActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        dataDir = dataDir();
         try {
-            unpackAssets(dataDir);
+            unpackAssets(dataDir());
         } catch (IOException e) {
             Log.e(TAG, "Could not unpack the shipped assets", e);
         }
@@ -129,32 +128,34 @@ public class SohActivity extends SDLActivity {
         return getExternalFilesDir(null);
     }
 
-    private void unpackAssets(File target) throws IOException {
-        if (target == null) {
+    private File targetFor(String path, File media) {
+        return new File(path.equals(INTERNAL_ROOT) ? getFilesDir() : media, path);
+    }
+
+    private void unpackAssets(File media) throws IOException {
+        if (media == null) {
             throw new IOException("No app folder");
         }
-        if (!target.isDirectory() && !target.mkdirs()) {
-            throw new IOException("Could not create " + target);
+        if (!media.isDirectory() && !media.mkdirs()) {
+            throw new IOException("Could not create " + media);
         }
 
         String fingerprint = shippedFingerprint();
-        File stamp = new File(target, STAMP);
-        if (stamp.isFile() && fingerprint.equals(readText(stamp)) && shippedAssetsExist(target)) {
+        File stamp = new File(getFilesDir(), STAMP);
+        if (stamp.isFile() && fingerprint.equals(readText(stamp)) && shippedAssetsExist(media)) {
             return;
         }
         stamp.delete();
 
-        AssetManager assets = getAssets();
-        for (String path : SHIPPED) {
-            copyAsset(assets, path, new File(target, path));
-        }
+        long start = System.nanoTime();
+        copyShipped(media);
         writeText(stamp, fingerprint);
-        Log.i(TAG, "Unpacked shipped assets " + fingerprint);
+        Log.i(TAG, "Unpacked shipped assets " + fingerprint + " in " + (System.nanoTime() - start) / 1000000 + " ms");
     }
 
-    private boolean shippedAssetsExist(File target) {
+    private boolean shippedAssetsExist(File media) {
         for (String path : SHIPPED) {
-            File file = new File(target, path);
+            File file = targetFor(path, media);
             if (!file.exists() || (file.isDirectory() && file.list() == null)) {
                 return false;
             }
@@ -187,27 +188,33 @@ public class SohActivity extends SDLActivity {
         return String.format("%08x.%d", digest.getValue(), entries.size());
     }
 
-    private void copyAsset(AssetManager assets, String path, File target) throws IOException {
-        String[] children = assets.list(path);
-        if (children != null && children.length > 0) {
-            if (!target.isDirectory() && !target.mkdirs()) {
-                throw new IOException("Could not create " + target);
-            }
-            for (String child : children) {
-                copyAsset(assets, path + "/" + child, new File(target, child));
-            }
-            return;
-        }
-
-        File parent = target.getParentFile();
-        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
-            throw new IOException("Could not create " + parent);
-        }
-        try (InputStream in = assets.open(path); OutputStream out = new FileOutputStream(target)) {
-            byte[] buffer = new byte[64 * 1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
+    private void copyShipped(File media) throws IOException {
+        Set<File> made = new HashSet<>();
+        byte[] buffer = new byte[64 * 1024];
+        try (ZipFile apk = new ZipFile(getApplicationInfo().sourceDir)) {
+            for (Enumeration<? extends ZipEntry> e = apk.entries(); e.hasMoreElements();) {
+                ZipEntry entry = e.nextElement();
+                if (entry.isDirectory() || !entry.getName().startsWith("assets/")) {
+                    continue;
+                }
+                String name = entry.getName().substring("assets/".length());
+                for (String root : SHIPPED) {
+                    if (!name.equals(root) && !name.startsWith(root + "/")) {
+                        continue;
+                    }
+                    File target = new File(targetFor(root, media).getParentFile(), name);
+                    File parent = target.getParentFile();
+                    if (parent != null && made.add(parent) && !parent.isDirectory() && !parent.mkdirs()) {
+                        throw new IOException("Could not create " + parent);
+                    }
+                    try (InputStream in = apk.getInputStream(entry); OutputStream out = new FileOutputStream(target)) {
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                    }
+                    break;
+                }
             }
         }
     }
