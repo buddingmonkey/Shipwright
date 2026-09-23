@@ -69,6 +69,7 @@
 
 #ifdef SOH_MOBILE
 #include <SDL.h>
+#include "soh/TouchControls/TouchControls.h"
 #endif
 
 #ifdef __SWITCH__
@@ -281,6 +282,9 @@ static bool sohArchiveVersionMatch = false;
 #ifdef SOH_MOBILE
 static std::atomic<bool> sAppOnScreen{ true };
 static std::atomic<bool> sWindowMinimized{ false };
+#ifdef __ANDROID__
+static std::atomic<bool> sBackPressed{ false };
+#endif
 
 static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
     switch (event->type) {
@@ -327,6 +331,14 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
             }
             break;
         }
+#ifdef __ANDROID__
+        case SDL_KEYUP: {
+            if (event->key.keysym.scancode == SDL_SCANCODE_AC_BACK) {
+                sBackPressed = true;
+            }
+            break;
+        }
+#endif
         case SDL_APP_TERMINATING: {
             SPDLOG_CRITICAL("System terminated the app");
             if (auto logger = spdlog::default_logger()) {
@@ -355,6 +367,9 @@ OTRGlobals::OTRGlobals() {
     SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_AddEventWatch(AppLifecycleWatch, nullptr);
+#endif
+#ifdef __ANDROID__
+    SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
 #endif
 #ifdef __IOS__
     SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
@@ -2024,6 +2039,11 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
 
 #ifdef SOH_MOBILE
     ParkWhileOffScreen();
+#endif
+#ifdef __ANDROID__
+    if (sBackPressed.exchange(false)) {
+        TouchControls_OpenMenu();
+    }
 #endif
 
     if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
