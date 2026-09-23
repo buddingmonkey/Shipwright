@@ -1,9 +1,12 @@
 package com.harbormasters.soh;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Rect;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -40,6 +43,11 @@ public class SohActivity extends SDLActivity {
         "gamecontrollerdb.txt",
     };
     private static final String INTERNAL_ROOT = "assets";
+    private static final int REQUEST_PICK_ROM = 1;
+    private static final String IMPORT_DIR = "import";
+    private static final String FALLBACK_IMPORT_NAME = "rom.z64";
+
+    private volatile boolean romPickPending = false;
 
     @Override
     protected String[] getLibraries() {
@@ -72,6 +80,10 @@ public class SohActivity extends SDLActivity {
 
     @Override
     protected void onDestroy() {
+        if (romPickPending) {
+            Log.i(TAG, "Releasing the pending ROM pick for shutdown");
+            deliverPickedRom(null);
+        }
         boolean relaunch = isChangingConfigurations();
         super.onDestroy();
         if (relaunch) {
@@ -80,6 +92,94 @@ public class SohActivity extends SDLActivity {
         }
         System.exit(0);
     }
+
+    public void openFilePicker() {
+        romPickPending = true;
+        runOnUiThread(() -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            Log.i(TAG, "Opening the system ROM picker");
+            try {
+                startActivityForResult(pick, REQUEST_PICK_ROM);
+            } catch (Exception e) {
+                Log.e(TAG, "No document picker available", e);
+                deliverPickedRom(null);
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_PICK_ROM) {
+            return;
+        }
+        Uri source = (resultCode == RESULT_OK && data != null) ? data.getData() : null;
+        if (source == null) {
+            Log.i(TAG, "ROM picker canceled");
+            deliverPickedRom(null);
+            return;
+        }
+        new Thread(() -> deliverPickedRom(importPickedRom(source)), "RomImport").start();
+    }
+
+    private void deliverPickedRom(String path) {
+        romPickPending = false;
+        nativeFilePicked(path);
+    }
+
+    private String importPickedRom(Uri source) {
+        File dir = new File(getCacheDir(), IMPORT_DIR);
+        String name = pickedRomName(source);
+        File target = new File(dir, name);
+        File partial = new File(target.getPath() + ".part");
+        try {
+            if (!dir.isDirectory() && !dir.mkdirs()) {
+                throw new IOException("Could not create " + dir);
+            }
+            Log.i(TAG, "Importing picked ROM " + source + " as " + name);
+            try (InputStream in = getContentResolver().openInputStream(source)) {
+                if (in == null) {
+                    throw new IOException("Could not open " + source);
+                }
+                try (OutputStream out = new FileOutputStream(partial)) {
+                    byte[] buffer = new byte[256 * 1024];
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                    }
+                }
+            }
+            if (!partial.renameTo(target)) {
+                throw new IOException("Could not move " + partial + " into place");
+            }
+            Log.i(TAG, "Imported picked ROM to " + target);
+            return target.getAbsolutePath();
+        } catch (IOException e) {
+            Log.e(TAG, "Could not import " + source, e);
+            partial.delete();
+            return null;
+        }
+    }
+
+    private String pickedRomName(Uri source) {
+        String name = null;
+        try (Cursor cursor = getContentResolver().query(source, new String[] { OpenableColumns.DISPLAY_NAME }, null,
+                                                         null, null)) {
+            if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) {
+                name = new File(cursor.getString(0)).getName();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not read the name of " + source, e);
+        }
+        if (name == null || name.isEmpty() || name.equals(".") || name.equals("..")) {
+            return FALLBACK_IMPORT_NAME;
+        }
+        return name.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    private static native void nativeFilePicked(String path);
 
     private void goImmersive() {
         Window window = getWindow();
