@@ -1,5 +1,6 @@
 package com.harbormasters.soh;
 
+import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
@@ -71,7 +72,12 @@ public class SohActivity extends SDLActivity {
 
     @Override
     protected void onDestroy() {
+        boolean relaunch = isChangingConfigurations();
         super.onDestroy();
+        if (relaunch) {
+            Log.i(TAG, "Configuration change needs a new activity; starting a new process");
+            startActivity(new Intent(this, SohActivity.class));
+        }
         System.exit(0);
     }
 
