@@ -370,6 +370,16 @@ OTRGlobals::OTRGlobals() {
     context->InitConfiguration();
     context->InitConsoleVariables();
 
+#if (_DEBUG)
+    auto defaultLogLevel = spdlog::level::trace;
+#else
+    auto defaultLogLevel = spdlog::level::info;
+#endif
+    auto logLevel =
+        static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
+    context->InitLogging(logLevel, logLevel);
+    context->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
+
 #ifdef SOH_MOBILE
     if (CVarGetInteger(CVAR_MSAA_VALUE, 0) == 0) {
         CVarSetInteger(CVAR_MSAA_VALUE, SOH_DEFAULT_MSAA);
@@ -944,17 +954,8 @@ void OTRGlobals::Initialize() {
         OOT_NTSC_JP_GC, OOT_NTSC_US_GC, OOT_PAL_GC,     OOT_PAL_GC_DBG1,   OOT_PAL_GC_DBG2,
     };
 
-#if (_DEBUG)
-    auto defaultLogLevel = spdlog::level::trace;
-#else
-    auto defaultLogLevel = spdlog::level::info;
-#endif
     context->InitConfiguration();
     context->InitConsoleVariables();
-    auto logLevel =
-        static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
-    context->InitLogging(logLevel, logLevel);
-    Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
 
     InitGfxDebugger();
     context->InitFileDropMgr();
