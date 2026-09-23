@@ -236,8 +236,12 @@ endif()
 
 set(ROOT_NAMESPACE soh)
 
+if(SOH_MOBILE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE SOH_MOBILE)
+endif()
+
 option(SOH_TOUCH_CONTROLS "Compile the on-screen touch controls" OFF)
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR SOH_TOUCH_CONTROLS)
+if(SOH_MOBILE OR SOH_TOUCH_CONTROLS)
     target_compile_definitions(${PROJECT_NAME} PRIVATE SOH_TOUCH_CONTROLS)
 endif()
 

@@ -14,6 +14,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 
 if(SOH_APPLE_MOBILE)
+    set(SOH_MOBILE TRUE)
+endif()
+
+if(SOH_APPLE_MOBILE)
     enable_language(OBJC OBJCXX)
     set(PROJECT_ID "com.harbormasters.soh" CACHE STRING "iOS bundle identifier")
     set(IOS_DEVELOPMENT_TEAM "" CACHE STRING "Apple Developer Team ID used to sign the iOS app")

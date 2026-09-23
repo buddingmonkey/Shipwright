@@ -67,7 +67,7 @@
 #include <SDL2/SDL_scancode.h>
 #endif
 
-#ifdef __IOS__
+#ifdef SOH_MOBILE
 #include <SDL.h>
 #endif
 
@@ -278,7 +278,7 @@ static bool VerifyArchiveVersion(OTRVersion version);
 std::string portArchivePath = "";
 static bool sohArchiveVersionMatch = false;
 
-#ifdef __IOS__
+#ifdef SOH_MOBILE
 static std::atomic<bool> sAppOnScreen{ true };
 static std::atomic<bool> sWindowMinimized{ false };
 
@@ -351,12 +351,14 @@ static void ParkWhileOffScreen() {
 OTRGlobals::OTRGlobals() {
     context = Ship::Context::CreateUninitializedInstance("Ship of Harkinian", appShortName, "shipofharkinian.json");
 
-#ifdef __IOS__
+#ifdef SOH_MOBILE
     SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_AddEventWatch(AppLifecycleWatch, nullptr);
+#endif
+#ifdef __IOS__
     SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
     SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2");
-    SDL_AddEventWatch(AppLifecycleWatch, nullptr);
 #endif
 
     portArchivePath = Ship::Context::LocateFileAcrossAppDirs("soh.o2r");
@@ -368,7 +370,7 @@ OTRGlobals::OTRGlobals() {
     context->InitConfiguration();
     context->InitConsoleVariables();
 
-#ifdef __IOS__
+#ifdef SOH_MOBILE
     if (CVarGetInteger(CVAR_MSAA_VALUE, 0) == 0) {
         CVarSetInteger(CVAR_MSAA_VALUE, SOH_DEFAULT_MSAA);
     }
@@ -832,7 +834,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
         if (!WindowIsRunning()) {
             ShutdownAndExit(0, &threadPool);
         }
-#ifdef __IOS__
+#ifdef SOH_MOBILE
         ParkWhileOffScreen();
 #endif
         // Process window events for resize, mouse, keyboard events
@@ -840,7 +842,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
         if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
             continue;
         }
-#ifdef __IOS__
+#ifdef SOH_MOBILE
         if (sWindowMinimized) {
             SDL_Delay(50);
             continue;
@@ -1678,14 +1680,14 @@ static void RunShaderPrewarm() {
         if (!WindowIsRunning()) {
             ShutdownAndExit(0);
         }
-#ifdef __IOS__
+#ifdef SOH_MOBILE
         ParkWhileOffScreen();
 #endif
         sohFast3dWindow->HandleEvents();
         if (!sohFast3dWindow->IsFrameReady() || sohFast3dWindow->GetWidth() == 0 || sohFast3dWindow->GetHeight() == 0) {
             continue;
         }
-#ifdef __IOS__
+#ifdef SOH_MOBILE
         if (sWindowMinimized) {
             SDL_Delay(50);
             continue;
@@ -1997,7 +1999,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
 
-#ifdef __IOS__
+#ifdef SOH_MOBILE
     ParkWhileOffScreen();
 #endif
 
@@ -2012,7 +2014,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
     for (int i = 0; i < count; i++) {
-#ifdef __IOS__
+#ifdef SOH_MOBILE
         if (sWindowMinimized) {
             break;
         }
