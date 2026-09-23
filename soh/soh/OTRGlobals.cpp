@@ -1116,13 +1116,30 @@ void OTRGlobals::Initialize() {
 OTRGlobals::~OTRGlobals() {
 }
 
+static float ImGuiDensityScale() {
+#ifdef __ANDROID__
+    static const float density = []() {
+        float ddpi = 0.0f;
+        float hdpi = 0.0f;
+        float vdpi = 0.0f;
+        if (SDL_GetDisplayDPI(0, &ddpi, &hdpi, &vdpi) == 0 && vdpi > 0.0f) {
+            return std::max(1.0f, vdpi / 160.0f);
+        }
+        return 1.0f;
+    }();
+    return density;
+#else
+    return 1.0f;
+#endif
+}
+
 void OTRGlobals::ScaleImGui() {
     int32_t imGuiScaleIndex = CVarGetInteger(CVAR_SETTING("ImGuiScale"), defaultImGuiScale);
     if (imGuiScaleIndex == previousImGuiScaleIndex) {
         return;
     }
 
-    float scale = imguiScaleOptionToValue[imGuiScaleIndex];
+    float scale = imguiScaleOptionToValue[imGuiScaleIndex] * ImGuiDensityScale();
     float newScale = scale / previousImGuiScale;
     ImGui::GetStyle().ScaleAllSizes(newScale);
     ImGui::GetIO().FontGlobalScale = scale;
