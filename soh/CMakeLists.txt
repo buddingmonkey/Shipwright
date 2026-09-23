@@ -228,7 +228,12 @@ set(ALL_FILES
 ################################################################################
 # Target
 ################################################################################
-add_executable(${PROJECT_NAME} ${ALL_FILES})
+if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+    add_library(${PROJECT_NAME} SHARED ${ALL_FILES})
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME main)
+else()
+    add_executable(${PROJECT_NAME} ${ALL_FILES})
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")
@@ -298,6 +303,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     )
     message(STATUS "Xcode scheme '${PROJECT_NAME}' runs the ${IOS_SCHEME_CONFIGURATION} "
                    "configuration (set IOS_SCHEME_CONFIGURATION to change)")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    target_compile_options(${PROJECT_NAME} PRIVATE -fsigned-char)
 endif()
 ################################################################################
 # MSVC runtime library
@@ -741,7 +748,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
     target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
         ${DEVKITPRO}/portlibs/wiiu/include/
     )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+elseif(SOH_MOBILE)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
     include(FetchContent)
@@ -791,16 +798,21 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     else()
         set(SOH_SDL2_NET_TARGET SDL2_net::SDL2_net)
     endif()
-    if(TARGET SDL2::SDL2-static)
-        set(SOH_SDL2_TARGET SDL2::SDL2-static)
-    else()
+    if(CMAKE_SYSTEM_NAME STREQUAL "Android")
         set(SOH_SDL2_TARGET SDL2::SDL2)
+        set(ADDITIONAL_LIBRARY_DEPENDENCIES log android EGL GLESv3)
+    else()
+        if(TARGET SDL2::SDL2-static)
+            set(SOH_SDL2_TARGET SDL2::SDL2-static)
+        else()
+            set(SOH_SDL2_TARGET SDL2::SDL2)
+        endif()
+        set(ADDITIONAL_LIBRARY_DEPENDENCIES "")
+        foreach(framework UIKit GameController CoreHaptics CoreMotion CoreGraphics AVFoundation)
+            find_library(IOS_FW_${framework} ${framework} REQUIRED)
+            list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES ${IOS_FW_${framework}})
+        endforeach()
     endif()
-    set(ADDITIONAL_LIBRARY_DEPENDENCIES "")
-    foreach(framework UIKit GameController CoreHaptics CoreMotion CoreGraphics AVFoundation)
-        find_library(IOS_FW_${framework} ${framework} REQUIRED)
-        list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES ${IOS_FW_${framework}})
-    endforeach()
     list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
         "libultraship;"
         "torch;"

@@ -662,8 +662,9 @@ void OpenMenu() {
 } // namespace
 
 #ifdef __ANDROID__
-extern "C" JNIEXPORT void JNICALL Java_com_harbormasters_lighthouse_LighthouseActivity_nativeSafeAreaInsets(
-    JNIEnv*, jclass, jint left, jint top, jint right, jint bottom) {
+extern "C" JNIEXPORT void JNICALL Java_com_harbormasters_soh_SohActivity_nativeSafeAreaInsets(JNIEnv*, jclass,
+                                                                                              jint left, jint top,
+                                                                                              jint right, jint bottom) {
     const jint values[INSET_COUNT] = { left, top, right, bottom };
     for (int i = 0; i < INSET_COUNT; i++) {
         sInsetPx[i].store(std::max<int>(values[i], 0), std::memory_order_relaxed);

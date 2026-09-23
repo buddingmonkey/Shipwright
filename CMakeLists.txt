@@ -13,7 +13,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(SOH_APPLE_MOBILE TRUE)
 endif()
 
-if(SOH_APPLE_MOBILE)
+if(SOH_APPLE_MOBILE OR CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(SOH_MOBILE TRUE)
 endif()
 
@@ -330,16 +330,22 @@ set(SOH_TORCH_TOOL $<TARGET_FILE:soh-torch>)
 set(SOH_TORCH_TOOL_DEPENDS soh-torch)
 set(SOH_O2R_PACKER_TOOL $<TARGET_FILE:soh-o2r-packer>)
 set(SOH_O2R_PACKER_TOOL_DEPENDS soh-o2r-packer)
-if(SOH_APPLE_MOBILE)
+if(SOH_APPLE_MOBILE OR CMAKE_SYSTEM_NAME STREQUAL "Android")
     include(ExternalProject)
-    execute_process(COMMAND sw_vers -productVersion
-        OUTPUT_VARIABLE SOH_HOST_MACOS_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(SOH_TOOLS_HOST_ARGS -DSOH_TOOLS_ONLY=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=)
+    if(SOH_APPLE_MOBILE)
+        execute_process(COMMAND sw_vers -productVersion
+            OUTPUT_VARIABLE SOH_HOST_MACOS_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+        list(APPEND SOH_TOOLS_HOST_ARGS -DCMAKE_OSX_SYSROOT=macosx
+             -DCMAKE_OSX_DEPLOYMENT_TARGET=${SOH_HOST_MACOS_VERSION})
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+        list(APPEND SOH_TOOLS_HOST_ARGS -DANDROID_ABI= -DANDROID_PLATFORM=)
+    endif()
     ExternalProject_Add(SohToolsHost
         PREFIX SohToolsHost
         SOURCE_DIR ${CMAKE_SOURCE_DIR}
         CMAKE_GENERATOR "Unix Makefiles"
-        CMAKE_ARGS -DSOH_TOOLS_ONLY=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=
-                   -DCMAKE_OSX_SYSROOT=macosx -DCMAKE_OSX_DEPLOYMENT_TARGET=${SOH_HOST_MACOS_VERSION}
+        CMAKE_ARGS ${SOH_TOOLS_HOST_ARGS}
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --target soh-torch soh-o2r-packer
         INSTALL_COMMAND ""
     )
@@ -415,6 +421,9 @@ endif()
 ################################################################################
 # Sub-projects
 ################################################################################
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    set(SDL_SHARED ON CACHE BOOL "" FORCE)
+endif()
 add_subdirectory(libultraship ${CMAKE_BINARY_DIR}/libultraship SYSTEM)
 quiet_target(libultraship "${WARNING_OVERRIDE}")
 target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
