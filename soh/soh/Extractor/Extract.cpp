@@ -248,29 +248,6 @@ void Extractor::GetRoms(std::vector<std::string>& roms) {
     // if (h != nullptr) {
     //    CloseHandle(h);
     //}
-#elif unix
-    // Open the directory of the app.
-    DIR* d = opendir(mSearchPath.c_str());
-    struct dirent* dir;
-
-    if (d != NULL) {
-        // Go through each file in the directory
-        while ((dir = readdir(d)) != NULL) {
-            struct stat path;
-
-            // Check if current entry is not folder
-            stat(dir->d_name, &path);
-            if (S_ISREG(path.st_mode)) {
-
-                // Get the position of the extension character.
-                char* ext = strrchr(dir->d_name, '.');
-                if (ext != NULL && (strcmp(ext, ".z64") == 0 || strcmp(ext, ".n64") == 0 || strcmp(ext, ".v64") == 0)) {
-                    roms.push_back(dir->d_name);
-                }
-            }
-        }
-    }
-    closedir(d);
 #else
     for (const auto& file : std::filesystem::directory_iterator(mSearchPath)) {
         if (file.is_directory())
