@@ -53,6 +53,13 @@
 #include <unordered_map>
 #include <string>
 
+#ifdef __ANDROID__
+#include <jni.h>
+#include <mutex>
+#include <condition_variable>
+#include <SDL2/SDL_system.h>
+#endif
+
 extern "C" uint32_t CRC32C(unsigned char* data, size_t dataSize);
 
 static constexpr uint32_t OOT_PAL_GC = 0x09465AC3;
@@ -260,6 +267,63 @@ void Extractor::GetRoms(std::vector<std::string>& roms) {
 #endif
 }
 
+#ifdef __ANDROID__
+static std::string sImportedRomPath;
+static std::mutex sPickMutex;
+static std::condition_variable sPickCv;
+static bool sPickReady = false;
+static std::string sPickPath;
+
+extern "C" JNIEXPORT void JNICALL Java_com_harbormasters_soh_SohActivity_nativeFilePicked(JNIEnv* env, jclass,
+                                                                                          jstring path) {
+    std::string picked;
+    if (path != nullptr) {
+        const char* chars = env->GetStringUTFChars(path, nullptr);
+        if (chars != nullptr) {
+            picked = chars;
+            env->ReleaseStringUTFChars(path, chars);
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(sPickMutex);
+        sPickPath = std::move(picked);
+        sPickReady = true;
+    }
+    sPickCv.notify_one();
+}
+
+static bool ShowAndroidFilePicker(std::string& outPath) {
+    JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (env == nullptr || activity == nullptr) {
+        SPDLOG_ERROR("No Android activity to open the file picker on");
+        return false;
+    }
+    jclass activityClass = env->GetObjectClass(activity);
+    jmethodID open = env->GetMethodID(activityClass, "openFilePicker", "()V");
+    if (open == nullptr) {
+        env->ExceptionClear();
+        SPDLOG_ERROR("SohActivity.openFilePicker is missing");
+        env->DeleteLocalRef(activityClass);
+        env->DeleteLocalRef(activity);
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(sPickMutex);
+        sPickReady = false;
+        sPickPath.clear();
+    }
+    env->CallVoidMethod(activity, open);
+    env->DeleteLocalRef(activityClass);
+    env->DeleteLocalRef(activity);
+
+    std::unique_lock<std::mutex> lock(sPickMutex);
+    sPickCv.wait(lock, [] { return sPickReady; });
+    outPath = std::move(sPickPath);
+    return !outPath.empty();
+}
+#endif
+
 bool Extractor::GetRomPathFromBox() {
 #ifdef _WIN32
     OPENFILENAMEA box = { 0 };
@@ -298,6 +362,13 @@ bool Extractor::GetRomPathFromBox() {
         return false;
     }
     mCurrentRomPath = nameBuffer;
+#elif defined(__ANDROID__)
+    std::string picked;
+    if (!ShowAndroidFilePicker(picked)) {
+        return false;
+    }
+    mCurrentRomPath = picked;
+    sImportedRomPath = picked;
 #else
     auto selection = pfd::open_file("Select a file", mSearchPath, { "N64 Roms", "*.z64 *.n64 *.v64" }).result();
 
@@ -649,6 +720,14 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
     }
 
     std::filesystem::remove_all(tempdir, ec);
+
+#ifdef __ANDROID__
+    if (success && !sImportedRomPath.empty() && mCurrentRomPath == sImportedRomPath) {
+        std::error_code importEc;
+        std::filesystem::remove(sImportedRomPath, importEc);
+        sImportedRomPath.clear();
+    }
+#endif
 
     return success;
 }
