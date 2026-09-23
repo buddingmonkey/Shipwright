@@ -116,17 +116,31 @@ val fetchGameControllerDb by tasks.registering {
     }
 }
 
+val hostTools: File = repoRoot.resolve("build-android/host-tools")
+val hostSohO2r: File = hostTools.resolve("soh/soh.o2r")
+
+val configureHostTools by tasks.registering(Exec::class) {
+    onlyIf { !hostTools.resolve("CMakeCache.txt").exists() }
+    commandLine(
+        "cmake", "-S", repoRoot.path, "-B", hostTools.path,
+        "-DSOH_TOOLS_ONLY=ON", "-DCMAKE_BUILD_TYPE=Release"
+    )
+}
+
+val generateSohOtr by tasks.registering(Exec::class) {
+    dependsOn(configureHostTools)
+    commandLine("cmake", "--build", hostTools.path, "--target", "GenerateSohOtr", "--parallel")
+    outputs.upToDateWhen { false }
+}
+
 val stageSohAssets by tasks.registering(Copy::class) {
+    dependsOn(generateSohOtr)
     into(stagedAssets)
-    from(repoRoot.resolve("soh.o2r"))
+    from(hostSohO2r)
     from(repoRoot.resolve("soh/assets/yml")) { into("assets") }
     doFirst {
-        val o2r = repoRoot.resolve("soh.o2r")
-        if (!o2r.exists() || o2r.length() == 0L) {
-            throw GradleException(
-                "soh.o2r is missing or empty at ${o2r.path}. Build it from a host tree first:\n" +
-                    "  cmake -H. -Bbuild-cmake -GNinja && cmake --build build-cmake --target GenerateSohOtr"
-            )
+        if (!hostSohO2r.exists() || hostSohO2r.length() == 0L) {
+            throw GradleException("GenerateSohOtr left no soh.o2r at ${hostSohO2r.path}")
         }
     }
 }
