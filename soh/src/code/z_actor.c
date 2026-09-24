@@ -10,6 +10,7 @@
 #include "soh/ObjectExtension/ObjectExtension.h"
 #include "soh/ObjectExtension/ActorListIndex.h"
 #include "soh/frame_interpolation.h"
+#include "soh/XrWindow.h"
 #include "soh/Enhancements/cosmetics/cosmeticsTypes.h"
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
@@ -3128,6 +3129,9 @@ void Actor_DrawAll(PlayState* play, ActorContext* actorCtx) {
         }
     }
 
+    XrWindow_BeginUnmeasured(&POLY_OPA_DISP);
+    XrWindow_BeginUnmeasured(&POLY_XLU_DISP);
+
     if ((HREG(64) != 1) || (HREG(73) != 0)) {
         Effect_DrawAll(play->state.gfxCtx);
     }
@@ -3135,6 +3139,9 @@ void Actor_DrawAll(PlayState* play, ActorContext* actorCtx) {
     if ((HREG(64) != 1) || (HREG(74) != 0)) {
         EffectSs_DrawAll(play);
     }
+
+    XrWindow_EndUnmeasured(&POLY_XLU_DISP);
+    XrWindow_EndUnmeasured(&POLY_OPA_DISP);
 
     if ((HREG(64) != 1) || (HREG(72) != 0)) {
         if (play->actorCtx.lensActive) {
