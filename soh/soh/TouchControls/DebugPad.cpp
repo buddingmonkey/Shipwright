@@ -2,6 +2,7 @@
 
 #ifdef ENABLE_DEBUG_TOOLS
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -43,6 +44,7 @@ bool sHolding = false;
 std::filesystem::file_time_type sStamp;
 bool sHasStamp = false;
 int sPollCountdown = 0;
+std::atomic<bool> sMenuToggle{ false };
 
 std::string RequestPath() {
     return Ship::Context::GetPathRelativeToAppDirectory("debug-pad");
@@ -58,7 +60,7 @@ int8_t ClampAxis(long value) {
     return static_cast<int8_t>(value);
 }
 
-void Apply(const std::string& line) {
+void Apply(const std::string& line, bool fresh) {
     PadState next;
     long holdMs = 0;
 
@@ -79,6 +81,10 @@ void Apply(const std::string& line) {
         }
         if (sscanf(token.c_str(), "ms=%ld", &x) == 1) {
             holdMs = x;
+            continue;
+        }
+        if (token == "MENU") {
+            sMenuToggle = sMenuToggle || fresh;
             continue;
         }
         for (const NamedButton& button : kButtons) {
@@ -111,16 +117,21 @@ void Poll() {
     if (sHasStamp && stamp == sStamp) {
         return;
     }
+    const bool fresh = sHasStamp;
     sStamp = stamp;
     sHasStamp = true;
 
     std::ifstream file(path);
     std::string line;
     std::getline(file, line);
-    Apply(line);
+    Apply(line, fresh);
 }
 
 } // namespace
+
+extern "C" bool DebugPad_TakeMenuToggle(void) {
+    return sMenuToggle.exchange(false);
+}
 
 extern "C" void DebugPad_MergeInto(void* contPad) {
     if (contPad == nullptr) {
