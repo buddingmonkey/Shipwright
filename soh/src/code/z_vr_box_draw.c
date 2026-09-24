@@ -1,6 +1,9 @@
 #include "global.h"
 
 #include "soh/frame_interpolation.h"
+#include "soh/XrWindow.h"
+
+extern PlayState* gPlayState;
 
 Mtx* sSkyboxDrawMatrix;
 
@@ -14,8 +17,14 @@ Mtx* SkyboxDraw_UpdateMatrix(SkyboxContext* skyboxCtx, f32 x, f32 y, f32 z) {
 }
 
 void SkyboxDraw_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId, s16 blend, f32 x, f32 y, f32 z) {
+    f32 skyScale = XrWindow_SkyScale(gPlayState != NULL ? gPlayState->view.zFar : 0.0f);
+
     OPEN_DISPS(gfxCtx);
     FrameInterpolation_RecordOpenChild(NULL, FrameInterpolation_GetCameraEpoch());
+
+    if (skyScale > 0.0f) {
+        XrWindow_BeginUnmeasured(&POLY_OPA_DISP);
+    }
 
     Gfx_SetupDL_40Opa(gfxCtx);
 
@@ -31,7 +40,11 @@ void SkyboxDraw_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyb
     sSkyboxDrawMatrix = Graph_Alloc(gfxCtx, sizeof(Mtx));
 
     Matrix_Translate(x, y, z, MTXMODE_NEW);
-    Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
+    if (skyScale > 0.0f) {
+        Matrix_Scale(skyScale, skyScale, skyScale, MTXMODE_APPLY);
+    } else {
+        Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
+    }
     Matrix_RotateX(skyboxCtx->rot.x, MTXMODE_APPLY);
     Matrix_RotateY(skyboxCtx->rot.y, MTXMODE_APPLY);
     Matrix_RotateZ(skyboxCtx->rot.z, MTXMODE_APPLY);
@@ -93,6 +106,10 @@ void SkyboxDraw_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyb
 
     gDPPipeSync(POLY_OPA_DISP++);
     // gsSPShaderTest2(POLY_OPA_DISP++);
+
+    if (skyScale > 0.0f) {
+        XrWindow_EndUnmeasured(&POLY_OPA_DISP);
+    }
 
     FrameInterpolation_RecordCloseChild();
     CLOSE_DISPS(gfxCtx);

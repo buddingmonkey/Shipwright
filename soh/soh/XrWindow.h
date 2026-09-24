@@ -18,9 +18,10 @@ extern "C" {
 
 void XrWindow_BeginFlat(Gfx** gfx);
 void XrWindow_EndFlat(Gfx** gfx);
-void XrWindow_BeginSceneDepth(Gfx** gfx);
-void XrWindow_EndSceneDepth(Gfx** gfx);
+void XrWindow_BeginUnmeasured(Gfx** gfx);
+void XrWindow_EndUnmeasured(Gfx** gfx);
 void XrWindow_MergePad(void* contPad);
+float XrWindow_SkyScale(float zFar);
 
 #ifdef __cplusplus
 }
