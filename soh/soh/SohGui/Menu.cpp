@@ -9,6 +9,7 @@
 #include "BackendTypes.h"
 #include "UIWidgets.hpp"
 #include "soh/OTRGlobals.h"
+#include "soh/XrWindow.h"
 #include "SohModals.h"
 
 extern "C" {
@@ -27,6 +28,35 @@ extern std::shared_ptr<SohModalWindow> mModalWindow;
 std::vector<SearchWidget> extraSearchWidgets = {};
 
 namespace Ship {
+bool PopoutWindowsUsable() {
+#ifdef SOH_MOBILE
+    return false;
+#else
+    return !SoH::IsHeadsetWindow();
+#endif
+}
+
+static void CloseUnusablePopoutWindows(const std::unordered_map<std::string, MainMenuEntry>& entries) {
+    auto gui = Ship::Context::GetRawInstance()->GetWindow()->GetGui();
+    if (gui == nullptr) {
+        return;
+    }
+    for (const auto& [headerName, entry] : entries) {
+        for (const auto& [sidebarName, sidebar] : entry.sidebars) {
+            for (const auto& column : sidebar.columnWidgets) {
+                for (const auto& widget : column) {
+                    if (widget.type != WIDGET_WINDOW_BUTTON || widget.windowName == nullptr) {
+                        continue;
+                    }
+                    auto window = gui->GetGuiWindow(widget.windowName);
+                    if (window != nullptr && window->IsVisible()) {
+                        window->Hide();
+                    }
+                }
+            }
+        }
+    }
+}
 std::string disabledTempTooltip;
 const char* disabledTooltip;
 bool disabledValue = false;
@@ -511,6 +541,15 @@ void Menu::MenuDrawItem(WidgetInfo& widget, UIWidgets::Colors menuThemeIndex) {
                 }
                 auto options = std::static_pointer_cast<UIWidgets::WindowButtonOptions>(widget.options);
                 options->color = menuThemeIndex;
+                if (!PopoutWindowsUsable()) {
+                    if (window->IsVisible()) {
+                        window->Hide();
+                    }
+                    if (options->embedWindow) {
+                        window->DrawElement();
+                    }
+                    break;
+                }
                 if (options->showButton) {
                     UIWidgets::WindowButton(widget.name.c_str(), widget.cVar, window, *options);
                 }
@@ -605,7 +644,13 @@ void Menu::DrawElement() {
     windowHeight = ImGui::GetMainViewport()->WorkSize.y;
     windowWidth = ImGui::GetMainViewport()->WorkSize.x;
     auto windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-    bool popout = CVarGetInteger(CVAR_SETTING("Menu.Popout"), 0) && allowPopout;
+    static bool popoutsWereUsable = true;
+    const bool popoutsUsable = PopoutWindowsUsable();
+    if (!popoutsUsable && popoutsWereUsable) {
+        CloseUnusablePopoutWindows(menuEntries);
+    }
+    popoutsWereUsable = popoutsUsable;
+    bool popout = CVarGetInteger(CVAR_SETTING("Menu.Popout"), 0) && allowPopout && popoutsUsable;
     if (popout) {
         windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
     }
