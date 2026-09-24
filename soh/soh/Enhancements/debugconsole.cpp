@@ -418,6 +418,10 @@ static bool EntranceHandler(std::shared_ptr<Ship::Console> Console, const std::v
     }
 
     gPlayState->nextEntranceIndex = entrance;
+    gSaveContext.cutsceneIndex = 0;
+    gSaveContext.nextCutsceneIndex = 0xFFEF;
+    gPlayState->csCtx.state = CS_STATE_IDLE;
+    Message_CloseTextbox(gPlayState);
     gPlayState->transitionTrigger = TRANS_TRIGGER_START;
     gPlayState->transitionType = TRANS_TYPE_INSTANT;
     gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
@@ -1531,14 +1535,19 @@ static void DebugWarpPoll() {
         return;
     }
     unsigned int entrance = 0;
+    int transition = TRANS_TYPE_INSTANT;
     try {
-        entrance = std::stoi(line, nullptr, 16);
+        size_t used = 0;
+        entrance = std::stoi(line, &used, 16);
+        if (used < line.size() && line.find_first_not_of(" \t\r\n", used) != std::string::npos) {
+            transition = std::stoi(line.substr(used));
+        }
     } catch (...) { return; }
     gPlayState->nextEntranceIndex = entrance;
     gPlayState->transitionTrigger = TRANS_TRIGGER_START;
-    gPlayState->transitionType = TRANS_TYPE_INSTANT;
-    gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
-    SPDLOG_INFO("debug-warp to entrance {:x}", entrance);
+    gPlayState->transitionType = transition;
+    gSaveContext.nextTransitionType = transition;
+    SPDLOG_INFO("debug-warp to entrance {:x}, transition {}", entrance, transition);
 }
 #endif
 
