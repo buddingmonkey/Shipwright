@@ -26,6 +26,7 @@
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/ShipUtils.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include "soh/XrWindow.h"
 
 #define MIN_QUEST (ResourceMgr_GameHasOriginal() ? QUEST_NORMAL : QUEST_MASTER)
 #define MAX_QUEST QUEST_BOSSRUSH
@@ -2127,6 +2128,8 @@ void FileChoose_ConfigModeDraw(GameState* thisx) {
     FileChoose_SetView(this, 0.0f, 0.0f, 64.0f);
     FileChoose_SetWindowVtx(&this->state);
     FileChoose_SetWindowContentVtx(&this->state);
+    XrWindow_BeginFlat(&POLY_OPA_DISP);
+    XrWindow_BeginFlat(&POLY_XLU_DISP);
 
     FrameInterpolation_RecordOpenChild(this, this->configMode);
 
@@ -2309,6 +2312,9 @@ void FileChoose_ConfigModeDraw(GameState* thisx) {
     DrawSeedHashSprites(this);
 
     FrameInterpolation_RecordCloseChild();
+
+    XrWindow_EndFlat(&POLY_XLU_DISP);
+    XrWindow_EndFlat(&POLY_OPA_DISP);
 
     CLOSE_DISPS(this->state.gfxCtx);
 }
@@ -2636,6 +2642,8 @@ void FileChoose_SelectModeDraw(GameState* thisx) {
     FileChoose_SetView(this, 0.0f, 0.0f, 64.0f);
     FileChoose_SetWindowVtx(&this->state);
     FileChoose_SetWindowContentVtx(&this->state);
+    XrWindow_BeginFlat(&POLY_OPA_DISP);
+    XrWindow_BeginFlat(&POLY_XLU_DISP);
 
     gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
     gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, this->windowColor[0], this->windowColor[1], this->windowColor[2],
@@ -2659,6 +2667,9 @@ void FileChoose_SelectModeDraw(GameState* thisx) {
     FileChoose_DrawWindowContents(&this->state);
     gDPPipeSync(POLY_OPA_DISP++);
     FileChoose_SetView(this, 0.0f, 0.0f, 64.0f);
+
+    XrWindow_EndFlat(&POLY_XLU_DISP);
+    XrWindow_EndFlat(&POLY_OPA_DISP);
 
     CLOSE_DISPS(this->state.gfxCtx);
 }

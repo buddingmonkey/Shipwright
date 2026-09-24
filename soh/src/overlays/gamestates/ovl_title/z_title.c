@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "time.h"
+#include "soh/XrWindow.h"
 
 // Note: In other rom versions this function also updates unk_1D4, coverAlpha, addAlpha, visibleDuration to calculate
 // the fade-in/fade-out + the duration of the n64 logo animation
@@ -72,6 +73,8 @@ void Title_Draw(TitleContext* this) {
 
     OPEN_DISPS(this->state.gfxCtx);
 
+    XrWindow_BeginFlat(&POLY_OPA_DISP);
+
     v3.x = 69;
     v3.y = 69;
     v3.z = 69;
@@ -118,6 +121,8 @@ void Title_Draw(TitleContext* this) {
     Environment_FillScreen(this->state.gfxCtx, 0, 0, 0, (s16)this->coverAlpha, FILL_SCREEN_XLU);
 
     sTitleRotY += 300;
+
+    XrWindow_EndFlat(&POLY_OPA_DISP);
 
     CLOSE_DISPS(this->state.gfxCtx);
 }

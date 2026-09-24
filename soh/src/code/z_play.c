@@ -10,6 +10,7 @@
 #include "soh/Enhancements/enhancementTypes.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/OTRGlobals.h"
+#include "soh/XrWindow.h"
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/SaveManager.h"
 #include "soh/framebuffer_effects.h"
@@ -1406,7 +1407,9 @@ void Play_Draw(PlayState* play) {
                 SET_FULLSCREEN_VIEWPORT(&view);
 
                 func_800AB9EC(&view, 15, &gfxP);
+                XrWindow_BeginFlat(&gfxP);
                 play->transitionCtx.draw(&play->transitionCtx.data, &gfxP);
+                XrWindow_EndFlat(&gfxP);
             }
 
             TransitionFade_Draw(&play->transitionFade, &gfxP);
