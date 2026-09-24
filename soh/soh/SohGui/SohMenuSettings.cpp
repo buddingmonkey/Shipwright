@@ -3,6 +3,10 @@
 #include "soh/Enhancements/enhancementTypes.h"
 #include "SohModals.h"
 #include "soh/OTRGlobals.h"
+#include "soh/XrWindow.h"
+#ifdef ENABLE_OPENXR
+#include <fast/backends/gfx_xr_view.h>
+#endif
 #include <soh/GameVersions.h>
 #include "soh/ResourceManagerHelpers.h"
 #include "UIWidgets.hpp"
@@ -411,6 +415,97 @@ void SohMenu::AddMenuSettings() {
         .Options(CheckboxOptions()
                      .DefaultValue(SOH_DEFAULT_MATCH_REFRESH_RATE)
                      .Tooltip("Matches interpolation value to the refresh rate of your display."));
+#ifdef ENABLE_XR_WINDOW
+    AddWidget(path, "Diorama Depth", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("XrDioramaDepth"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(FloatSliderOptions()
+                     .Tooltip("How deep the world goes behind the window. The farthest thing the game draws is "
+                              "this far behind the window, and nearer things are between it and the window, for "
+                              "all window ranges and sizes.\n\nA small depth keeps the world near the window, "
+                              "which is the most comfortable for a long session. No depth makes the eyes "
+                              "diverge.")
+                     .Min(0.5f)
+                     .Max(4.0f)
+                     .DefaultValue(2.0f)
+                     .Format("%.2f m"));
+#ifdef ENABLE_OPENXR
+    AddWidget(path, "Window Range", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("XrWindowRange"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(FloatSliderOptions()
+                     .Tooltip("How far away the window is. The window keeps its size, thus a longer range makes "
+                              "it smaller in your view. The depth of the world behind the window does not "
+                              "change.\n\nThe move bar below the window sets the same range.")
+                     .Min(0.5f)
+                     .Max(4.0f)
+                     .DefaultValue(1.3f)
+                     .Format("%.2f m"));
+    AddWidget(path, "Window Size", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("XrWindowScale"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(FloatSliderOptions()
+                     .Tooltip("How large the window is. The range does not change the size. For a large window "
+                              "far away, increase the range, then increase the size.\n\nThe corner handles "
+                              "set the same size.")
+                     .Min(0.5f)
+                     .Max(8.0f)
+                     .DefaultValue(2.6f)
+                     .Format("%.2f"));
+    AddWidget(path, "Edge Float", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("XrEdgeFloat"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(FloatSliderOptions()
+                     .Tooltip("How far the side edges of the window move toward you. At a side edge, one eye "
+                              "sees a small part of the world that the other eye cannot see. A forward edge "
+                              "makes that part look like it is behind a near frame.\n\nEach eye loses this "
+                              "much width at one side. Zero turns it off.")
+                     .Min(0.0f)
+                     .Max(1.0f)
+                     .DefaultValue(0.15f)
+                     .Format("%.2f"));
+    AddWidget(path, "Edge Softness", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("XrEdgeSoftness"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(FloatSliderOptions()
+                     .Tooltip("How far the picture fades at the edge of the window. It does not change what "
+                              "each eye sees. To change that, use Edge Float.")
+                     .Min(0.0f)
+                     .Max(3.0f)
+                     .DefaultValue(0.36f)
+                     .Format("%.2f"));
+    AddWidget(path, "Max Refresh Rate", WIDGET_CVAR_SLIDER_INT)
+        .CVar(CVAR_SETTING("XrMaxRate"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(IntSliderOptions()
+                     .Tooltip("The highest refresh rate to ask the headset for. The game uses the fastest rate "
+                              "the headset supports at or below this value. Set a lower value to decrease "
+                              "battery use and heat.")
+                     .Min(60)
+                     .Max(120)
+                     .DefaultValue(120)
+                     .Format("%d Hz"));
+    AddWidget(path, "Recenter Window", WIDGET_BUTTON)
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Callback([](WidgetInfo& info) { Fast::RecenterXrWindow(); })
+        .Options(ButtonOptions().Tooltip("Moves the window in front of you, where you look now."));
+    AddWidget(path, "Stereo", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("XrStereo"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(CheckboxOptions()
+                     .Tooltip("Draws the picture one time for each eye, which gives the world depth. Turn it "
+                              "off to draw one picture for the two eyes, at half the cost.")
+                     .DefaultValue(true));
+#endif
+#endif
     AddWidget(path, "Renderer API (Needs reload)", WIDGET_VIDEO_BACKEND).RaceDisable(false);
     AddWidget(path, "Enable Vsync", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_VSYNC_ENABLED)

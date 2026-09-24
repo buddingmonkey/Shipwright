@@ -60,6 +60,7 @@
 
 #include <fast/interpreter.h>
 #include "soh/ShaderPrewarm.h"
+#include "soh/XrWindow.h"
 
 #ifdef __APPLE__
 #include <SDL_scancode.h>
@@ -2080,6 +2081,8 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     }
 
     audio.cv_to_thread.notify_one();
+    SoH::XrWindow_Sync(
+        std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow()).get());
     int target_fps = OTRGlobals::Instance->GetInterpolationFPS();
     static int lastLoggedTarget = -1;
     if (target_fps != lastLoggedTarget) {

@@ -50,6 +50,7 @@ bool TouchControls_Active() {
 #include <ship/controller/controldeck/ControlDeck.h>
 
 #include "soh/cvar_prefixes.h"
+#include "soh/XrWindow.h"
 
 enum {
     CONTROL_SCHEME_RETRO = 0,
@@ -203,16 +204,8 @@ bool MenuVisible() {
     return ctx->GetWindow()->GetGui()->GetMenuOrMenubarVisible();
 }
 
-bool IsHeadsetWindow() {
-#ifdef ENABLE_XR_WINDOW
-    return Fast::IsXrPresenting();
-#else
-    return false;
-#endif
-}
-
 bool PadActive() {
-    if (!SoH::TouchControls_Active() || MenuVisible() || IsHeadsetWindow()) {
+    if (!SoH::TouchControls_Active() || MenuVisible() || SoH::IsHeadsetWindow()) {
         return false;
     }
     if (CVarGetInteger(CVAR_TOUCH("HideWithGamepad"), 1) && sGamepadPresent) {
@@ -697,7 +690,7 @@ extern "C" void TouchControls_Poll(void) {
     EnsureLayout(w / h, h);
 
     const bool padActive = PadActive();
-    const bool menuButtonActive = !MenuVisible() && !IsHeadsetWindow();
+    const bool menuButtonActive = !MenuVisible() && !SoH::IsHeadsetWindow();
 
     std::vector<Finger> live;
     const int deviceCount = SDL_GetNumTouchDevices();
@@ -888,7 +881,7 @@ void TouchControls_Draw() {
     ImDrawList* dl = ImGui::GetForegroundDrawList();
     const float alpha = std::clamp(CVarGetFloat(CVAR_TOUCH("Opacity"), 0.4f), 0.05f, 1.0f);
 
-    if (!MenuVisible() && !IsHeadsetWindow()) {
+    if (!MenuVisible() && !SoH::IsHeadsetWindow()) {
         const ImVec2 menuMin =
             px({ sLayout.menuCenter.x - sLayout.menuHalfExtent.x, sLayout.menuCenter.y - sLayout.menuHalfExtent.y });
         const ImVec2 menuMax =
