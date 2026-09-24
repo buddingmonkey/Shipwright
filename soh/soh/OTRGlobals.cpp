@@ -2088,7 +2088,122 @@ extern "C" void Graph_StartFrame() {
 }
 
 // Interpolated frames of a tick are evenly spaced numerators time+step, time+2*step, ... over denom.
-void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
+#ifdef ENABLE_DEBUG_TOOLS
+static void ReportDrawTime(long long drawNs, long long logicNs, int subframes, uint32_t drawCalls) {
+    static auto since = std::chrono::steady_clock::now();
+    static long long drawTotal = 0;
+    static long long drawWorst = 0;
+    static long long logicTotal = 0;
+    static long long logicWorst = 0;
+    static long long callTotal = 0;
+    static int drawn = 0;
+    static int ticks = 0;
+
+    drawTotal += drawNs;
+    drawWorst = std::max(drawWorst, drawNs);
+    logicTotal += logicNs;
+    logicWorst = std::max(logicWorst, logicNs);
+    callTotal += drawCalls;
+    drawn += subframes;
+    ticks++;
+
+    const auto now = std::chrono::steady_clock::now();
+    const double seconds = std::chrono::duration<double>(now - since).count();
+    if (seconds < 5.0) {
+        return;
+    }
+    SPDLOG_INFO("perf: {:.1f} ticks/s, {:.1f} sub-frames/s, draw {:.2f} ms/sub-frame (worst tick {:.2f} ms), logic "
+                "{:.2f} ms/tick (worst {:.2f}), {:.0f} draw calls/sub-frame",
+                ticks / seconds, drawn / seconds, drawn > 0 ? drawTotal / (double)drawn / 1.0e6 : 0.0,
+                drawWorst / 1.0e6, logicTotal / (double)ticks / 1.0e6, logicWorst / 1.0e6,
+                drawn > 0 ? (double)callTotal / drawn : 0.0);
+    since = now;
+    drawTotal = drawWorst = logicTotal = logicWorst = callTotal = 0;
+    drawn = ticks = 0;
+}
+#endif
+
+namespace {
+constexpr int PACING_PROBE_TICKS = 30;
+constexpr int PACING_GAP_TICKS = 8;
+constexpr double PACING_LATE_RATIO = 1.03;
+
+struct SubframePacing {
+    bool active = false;
+    long long periodNs = 0;
+    long long naturalNs = 0;
+    long long filteredSubframeNs = 0;
+    long long filteredLogicNs = 0;
+    std::chrono::steady_clock::time_point nextTick;
+    std::chrono::steady_clock::time_point passEnd;
+    int asked = 0;
+    int drawn = 0;
+};
+
+SubframePacing sPacing;
+
+int PaceSubframes(int count, int fps) {
+    static int allowed = 0;
+    static int probeCountdown = PACING_PROBE_TICKS;
+    static bool wasShort = false;
+    static double lateRatio = 1.0;
+    static auto lastTick = std::chrono::steady_clock::time_point();
+
+    if (!SoH::IsHeadsetWindow() || fps <= 0) {
+        sPacing.active = false;
+        allowed = 0;
+        return count;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const bool first = !sPacing.active || lastTick.time_since_epoch().count() == 0;
+    const long long tickNs = first ? 0 : std::chrono::duration_cast<std::chrono::nanoseconds>(now - lastTick).count();
+    lastTick = now;
+
+    const long long lastNaturalNs = sPacing.naturalNs;
+    if (first || tickNs > lastNaturalNs * PACING_GAP_TICKS) {
+        sPacing.filteredSubframeNs = 0;
+        sPacing.filteredLogicNs = 0;
+        sPacing.asked = 0;
+        sPacing.drawn = 0;
+        sPacing.nextTick = now;
+        lateRatio = 1.0;
+        wasShort = false;
+    } else {
+        const long long logicNs = std::chrono::duration_cast<std::chrono::nanoseconds>(now - sPacing.passEnd).count();
+        sPacing.filteredLogicNs += (logicNs - sPacing.filteredLogicNs) / 8;
+        lateRatio += ((double)tickNs / (double)lastNaturalNs - lateRatio) / 8.0;
+    }
+
+    if (allowed < 1) {
+        allowed = count;
+    }
+    const bool isShort = sPacing.asked > 0 && (sPacing.drawn < sPacing.asked || lateRatio > PACING_LATE_RATIO);
+    if (isShort && wasShort) {
+        allowed = sPacing.asked - 1;
+        probeCountdown = PACING_PROBE_TICKS;
+        lateRatio = 1.0;
+    } else if (!isShort && --probeCountdown <= 0) {
+        allowed++;
+        probeCountdown = PACING_PROBE_TICKS;
+    }
+    wasShort = isShort;
+    allowed = std::clamp(allowed, 1, count + 1);
+
+    sPacing.active = true;
+    sPacing.periodNs = 1000000000LL / fps;
+    sPacing.naturalNs = sPacing.periodNs * count;
+    if (now - sPacing.nextTick > std::chrono::nanoseconds(sPacing.naturalNs * 2)) {
+        sPacing.nextTick = now;
+    }
+    sPacing.nextTick += std::chrono::nanoseconds(sPacing.naturalNs);
+    sPacing.asked = std::min(count, allowed);
+    sPacing.drawn = 0;
+    return sPacing.asked;
+}
+} // namespace
+
+void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int drawCount) {
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(OTRGlobals::Instance->context->GetWindow());
 
     if (wnd == nullptr) {
@@ -2137,20 +2252,66 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     UIWidgets::Colors themeColor =
         static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
-    for (int i = 0; i < count; i++) {
+#ifdef ENABLE_DEBUG_TOOLS
+    static auto sLastDrawEnd = std::chrono::steady_clock::now();
+    const auto drawStart = std::chrono::steady_clock::now();
+    const long long logicNs = std::chrono::duration_cast<std::chrono::nanoseconds>(drawStart - sLastDrawEnd).count();
+    uint32_t drawCalls = 0;
+    int drawnSubframes = 0;
+#endif
+    const auto passStart = std::chrono::steady_clock::now();
+    for (int i = 0; i < drawCount; i++) {
 #ifdef SOH_MOBILE
         if (sWindowMinimized) {
             break;
         }
 #endif
-        time += step;
+        if (sPacing.active && i > 0) {
+            const long long spentNs =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - passStart)
+                    .count();
+            if (spentNs + std::max(sPacing.filteredSubframeNs, sPacing.periodNs) >
+                sPacing.naturalNs + sPacing.periodNs / 2) {
+                break;
+            }
+        }
+        const float subframeTime = (drawCount == count) ? (float)(time + (i + 1) * step)
+                                                        : (float)time + (float)((i + 1) * count * step) / drawCount;
+        const bool finalTime = (i == drawCount - 1) && (time + count * step == denom);
         std::unordered_map<Mtx*, MtxF> mtx_replacements =
-            (time == denom) ? std::unordered_map<Mtx*, MtxF>() : FrameInterpolation_Interpolate((float)time / denom);
-        intp->mInterpolationT = (float)time / denom;
+            finalTime ? std::unordered_map<Mtx*, MtxF>() : FrameInterpolation_Interpolate(subframeTime / denom);
+        intp->mInterpolationT = subframeTime / denom;
+#ifdef ENABLE_DEBUG_TOOLS
+        intp->mDrawCallCount = 0;
+#endif
+        const auto subframeStart = std::chrono::steady_clock::now();
         wnd->DrawAndRunGraphicsCommands(Commands, mtx_replacements);
+        if (sPacing.active) {
+            const long long subframeNs =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - subframeStart)
+                    .count();
+            const long long sample = std::min(subframeNs, sPacing.naturalNs);
+            sPacing.filteredSubframeNs += (sample - sPacing.filteredSubframeNs) / 8;
+            sPacing.drawn++;
+        }
+#ifdef ENABLE_DEBUG_TOOLS
+        drawCalls += intp->mDrawCallCount;
+        drawnSubframes++;
+#endif
         intp->mInterpolationIndex++;
     }
+    if (sPacing.active) {
+        if (sPacing.drawn < count) {
+            std::this_thread::sleep_until(sPacing.nextTick - std::chrono::nanoseconds(sPacing.filteredLogicNs));
+        }
+        sPacing.passEnd = std::chrono::steady_clock::now();
+    }
     ImGui::PopStyleColor();
+#ifdef ENABLE_DEBUG_TOOLS
+    sLastDrawEnd = std::chrono::steady_clock::now();
+    ReportDrawTime(std::chrono::duration_cast<std::chrono::nanoseconds>(sLastDrawEnd - drawStart).count(), logicNs,
+                   drawnSubframes, drawCalls);
+#endif
 }
 
 // C->C++ Bridge
@@ -2209,7 +2370,14 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
         count = 1;
     }
 
-    RunCommands(commands, start_time, step, next_original_frame, count);
+    int drawCount = count;
+    if (GfxDebuggerIsDebugging()) {
+        sPacing.active = false;
+    } else {
+        drawCount = PaceSubframes(count, fps);
+    }
+
+    RunCommands(commands, start_time, step, next_original_frame, count, drawCount);
 
     last_fps = fps;
     last_update_rate = R_UPDATE_RATE;
