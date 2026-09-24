@@ -2032,6 +2032,41 @@ extern "C" void Graph_StartFrame() {
 }
 
 // Interpolated frames of a tick are evenly spaced numerators time+step, time+2*step, ... over denom.
+#ifdef ENABLE_DEBUG_TOOLS
+static void ReportDrawTime(long long drawNs, long long logicNs, int subframes, uint32_t drawCalls) {
+    static auto since = std::chrono::steady_clock::now();
+    static long long drawTotal = 0;
+    static long long drawWorst = 0;
+    static long long logicTotal = 0;
+    static long long logicWorst = 0;
+    static long long callTotal = 0;
+    static int drawn = 0;
+    static int ticks = 0;
+
+    drawTotal += drawNs;
+    drawWorst = std::max(drawWorst, drawNs);
+    logicTotal += logicNs;
+    logicWorst = std::max(logicWorst, logicNs);
+    callTotal += drawCalls;
+    drawn += subframes;
+    ticks++;
+
+    const auto now = std::chrono::steady_clock::now();
+    const double seconds = std::chrono::duration<double>(now - since).count();
+    if (seconds < 5.0) {
+        return;
+    }
+    SPDLOG_INFO("perf: {:.1f} ticks/s, {:.1f} sub-frames/s, draw {:.2f} ms/sub-frame (worst tick {:.2f} ms), logic "
+                "{:.2f} ms/tick (worst {:.2f}), {:.0f} draw calls/sub-frame",
+                ticks / seconds, drawn / seconds, drawn > 0 ? drawTotal / (double)drawn / 1.0e6 : 0.0,
+                drawWorst / 1.0e6, logicTotal / (double)ticks / 1.0e6, logicWorst / 1.0e6,
+                drawn > 0 ? (double)callTotal / drawn : 0.0);
+    since = now;
+    drawTotal = drawWorst = logicTotal = logicWorst = callTotal = 0;
+    drawn = ticks = 0;
+}
+#endif
+
 void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(OTRGlobals::Instance->context->GetWindow());
 
@@ -2081,6 +2116,13 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     UIWidgets::Colors themeColor =
         static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
+#ifdef ENABLE_DEBUG_TOOLS
+    static auto sLastDrawEnd = std::chrono::steady_clock::now();
+    const auto drawStart = std::chrono::steady_clock::now();
+    const long long logicNs = std::chrono::duration_cast<std::chrono::nanoseconds>(drawStart - sLastDrawEnd).count();
+    uint32_t drawCalls = 0;
+    int drawnSubframes = 0;
+#endif
     for (int i = 0; i < count; i++) {
 #ifdef SOH_MOBILE
         if (sWindowMinimized) {
@@ -2091,10 +2133,22 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
         std::unordered_map<Mtx*, MtxF> mtx_replacements =
             (time == denom) ? std::unordered_map<Mtx*, MtxF>() : FrameInterpolation_Interpolate((float)time / denom);
         intp->mInterpolationT = (float)time / denom;
+#ifdef ENABLE_DEBUG_TOOLS
+        intp->mDrawCallCount = 0;
+#endif
         wnd->DrawAndRunGraphicsCommands(Commands, mtx_replacements);
+#ifdef ENABLE_DEBUG_TOOLS
+        drawCalls += intp->mDrawCallCount;
+        drawnSubframes++;
+#endif
         intp->mInterpolationIndex++;
     }
     ImGui::PopStyleColor();
+#ifdef ENABLE_DEBUG_TOOLS
+    sLastDrawEnd = std::chrono::steady_clock::now();
+    ReportDrawTime(std::chrono::duration_cast<std::chrono::nanoseconds>(sLastDrawEnd - drawStart).count(), logicNs,
+                   drawnSubframes, drawCalls);
+#endif
 }
 
 // C->C++ Bridge
