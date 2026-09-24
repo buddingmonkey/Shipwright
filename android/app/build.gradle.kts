@@ -83,6 +83,11 @@ android {
         }
         debug {
             isJniDebuggable = true
+            externalNativeBuild {
+                cmake {
+                    arguments += "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+                }
+            }
         }
     }
 
