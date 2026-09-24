@@ -3,6 +3,7 @@
 
 #include "SohMenu.h"
 #include "soh/OTRGlobals.h"
+#include "soh/XrWindow.h"
 
 extern "C" {
 extern PlayState* gPlayState;
@@ -164,6 +165,8 @@ void SohMenu::InitElement() {
                return !CVarGetInteger(CVAR_PREFIX_ADVANCED_RESOLUTION ".VerticalResolutionToggle", 0);
            },
             "Vertical Resolution Toggle is Off" } },
+        { DISABLE_FOR_HEADSET,
+          { [](disabledInfo& info) -> bool { return SoH::IsHeadsetWindow(); }, "Not available in a headset" } },
     };
 }
 

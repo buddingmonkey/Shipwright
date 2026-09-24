@@ -1823,6 +1823,11 @@ void SohMenu::AddMenuEnhancements() {
                                       "relevant when frequently being knocked back by traps, CC, or in Anchor."));
     AddWidget(path, "Mirrored World", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("MirroredWorldMode"))
+        .PreFunc([](WidgetInfo& info) {
+            if (mSohMenu->disabledMap.at(DISABLE_FOR_HEADSET).active) {
+                info.activeDisables.push_back(DISABLE_FOR_HEADSET);
+            }
+        })
         .Options(
             ComboboxOptions()
                 .DefaultIndex(MIRRORED_WORLD_OFF)
