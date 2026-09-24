@@ -2,6 +2,7 @@
 
 #ifdef ENABLE_DEBUG_TOOLS
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -43,6 +44,7 @@ bool sHolding = false;
 std::filesystem::file_time_type sStamp;
 bool sHasStamp = false;
 int sPollCountdown = 0;
+std::atomic<bool> sMenuToggle{ false };
 
 std::string RequestPath() {
     return Ship::Context::GetPathRelativeToAppDirectory("debug-pad");
@@ -79,6 +81,10 @@ void Apply(const std::string& line) {
         }
         if (sscanf(token.c_str(), "ms=%ld", &x) == 1) {
             holdMs = x;
+            continue;
+        }
+        if (token == "MENU") {
+            sMenuToggle = true;
             continue;
         }
         for (const NamedButton& button : kButtons) {
@@ -121,6 +127,10 @@ void Poll() {
 }
 
 } // namespace
+
+extern "C" bool DebugPad_TakeMenuToggle(void) {
+    return sMenuToggle.exchange(false);
+}
 
 extern "C" void DebugPad_MergeInto(void* contPad) {
     if (contPad == nullptr) {
