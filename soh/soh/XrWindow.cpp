@@ -10,13 +10,18 @@
 #include <fast/backends/gfx_xr_view.h>
 #endif
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <libultraship/libultra/controller.h>
 #include <ship/Context.h>
+#include <ship/controller/controldeck/ControlDeck.h>
 
 #include "soh/cvar_prefixes.h"
 
 namespace {
 
 constexpr int RATE_SETTLE_TICKS = 90;
+constexpr float STICK_RANGE = 80.0f;
+constexpr float PULL_POINT = 0.66f;
+constexpr float C_POINT = 0.5f;
 
 void SelectRefreshRate(Fast::Fast3dWindow* wnd) {
     const int cap = CVarGetInteger(CVAR_SETTING("XrMaxRate"), 120);
@@ -161,6 +166,75 @@ extern "C" void XrWindow_BeginSceneDepth(Gfx** gfx) {
 }
 
 extern "C" void XrWindow_EndSceneDepth(Gfx** gfx) {
+}
+
+#endif
+
+#ifdef ENABLE_OPENXR
+
+extern "C" void XrWindow_MergePad(void* contPad) {
+    Fast::XrPadState xr;
+    if (contPad == nullptr || !Fast::GetXrPad(&xr)) {
+        return;
+    }
+    auto ctx = Ship::Context::GetRawInstance();
+    if (ctx == nullptr || ctx->GetControlDeck() == nullptr || ctx->GetControlDeck()->GamepadGameInputBlocked()) {
+        return;
+    }
+
+    uint32_t buttons = 0;
+    if (xr.buttons & Fast::XR_PAD_A) {
+        buttons |= BTN_A;
+    }
+    if (xr.buttons & Fast::XR_PAD_B) {
+        buttons |= BTN_B;
+    }
+    if (xr.buttons & Fast::XR_PAD_MENU) {
+        buttons |= BTN_START;
+    }
+    if (xr.buttons & Fast::XR_PAD_X) {
+        buttons |= BTN_DLEFT;
+    }
+    if (xr.buttons & Fast::XR_PAD_Y) {
+        buttons |= BTN_DUP;
+    }
+    if (xr.trigger[0] >= PULL_POINT) {
+        buttons |= BTN_Z;
+    }
+    if (xr.trigger[1] >= PULL_POINT || xr.squeeze[1] >= PULL_POINT) {
+        buttons |= BTN_R;
+    }
+    if (xr.squeeze[0] >= PULL_POINT) {
+        buttons |= BTN_L;
+    }
+    if (xr.stick[1][0] <= -C_POINT) {
+        buttons |= BTN_CLEFT;
+    }
+    if (xr.stick[1][0] >= C_POINT) {
+        buttons |= BTN_CRIGHT;
+    }
+    if (xr.stick[1][1] >= C_POINT) {
+        buttons |= BTN_CUP;
+    }
+    if (xr.stick[1][1] <= -C_POINT) {
+        buttons |= BTN_CDOWN;
+    }
+
+    OSContPad* pad = static_cast<OSContPad*>(contPad);
+    pad->button |= buttons;
+    if (pad->stick_x == 0 && pad->stick_y == 0) {
+        pad->stick_x = (int8_t)std::lround(std::clamp(xr.stick[0][0], -1.0f, 1.0f) * STICK_RANGE);
+        pad->stick_y = (int8_t)std::lround(std::clamp(xr.stick[0][1], -1.0f, 1.0f) * STICK_RANGE);
+    }
+    if (pad->right_stick_x == 0 && pad->right_stick_y == 0) {
+        pad->right_stick_x = (int8_t)std::lround(std::clamp(xr.stick[1][0], -1.0f, 1.0f) * STICK_RANGE);
+        pad->right_stick_y = (int8_t)std::lround(std::clamp(xr.stick[1][1], -1.0f, 1.0f) * STICK_RANGE);
+    }
+}
+
+#else
+
+extern "C" void XrWindow_MergePad(void* contPad) {
 }
 
 #endif
