@@ -60,7 +60,7 @@ int8_t ClampAxis(long value) {
     return static_cast<int8_t>(value);
 }
 
-void Apply(const std::string& line) {
+void Apply(const std::string& line, bool fresh) {
     PadState next;
     long holdMs = 0;
 
@@ -84,7 +84,7 @@ void Apply(const std::string& line) {
             continue;
         }
         if (token == "MENU") {
-            sMenuToggle = true;
+            sMenuToggle = sMenuToggle || fresh;
             continue;
         }
         for (const NamedButton& button : kButtons) {
@@ -117,13 +117,14 @@ void Poll() {
     if (sHasStamp && stamp == sStamp) {
         return;
     }
+    const bool fresh = sHasStamp;
     sStamp = stamp;
     sHasStamp = true;
 
     std::ifstream file(path);
     std::string line;
     std::getline(file, line);
-    Apply(line);
+    Apply(line, fresh);
 }
 
 } // namespace
