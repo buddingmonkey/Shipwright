@@ -490,7 +490,7 @@ void SohMenu::AddMenuSettings() {
                               "battery use and heat.")
                      .Min(60)
                      .Max(120)
-                     .DefaultValue(120)
+                     .DefaultValue(90)
                      .Format("%d Hz"));
     AddWidget(path, "Recenter Window", WIDGET_BUTTON)
         .RaceDisable(false)

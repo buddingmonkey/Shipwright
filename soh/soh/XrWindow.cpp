@@ -28,7 +28,7 @@ constexpr float SKY_CORNER = 218.3f;
 constexpr float SKY_REACH = 0.9f;
 
 void SelectRefreshRate(Fast::Fast3dWindow* wnd) {
-    const int cap = CVarGetInteger(CVAR_SETTING("XrMaxRate"), 120);
+    const int cap = CVarGetInteger(CVAR_SETTING("XrMaxRate"), 90);
 
     std::vector<float> rates;
     for (float rate : wnd->GetSupportedRefreshRates()) {
