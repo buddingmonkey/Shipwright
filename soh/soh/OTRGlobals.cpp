@@ -1168,8 +1168,17 @@ void OTRGlobals::ScaleImGui() {
         return;
     }
 
-    float newScale = scale / previousImGuiScale;
-    ImGui::GetStyle().ScaleAllSizes(newScale);
+    static ImGuiStyle baseStyle;
+    static bool hasBaseStyle = false;
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (!hasBaseStyle) {
+        baseStyle = style;
+        hasBaseStyle = true;
+    }
+    ImGuiStyle scaled = baseStyle;
+    std::copy(std::begin(style.Colors), std::end(style.Colors), std::begin(scaled.Colors));
+    scaled.ScaleAllSizes(scale);
+    style = scaled;
     ImGui::GetIO().FontGlobalScale = scale;
     previousImGuiScale = scale;
     previousImGuiScaleIndex = imGuiScaleIndex;
