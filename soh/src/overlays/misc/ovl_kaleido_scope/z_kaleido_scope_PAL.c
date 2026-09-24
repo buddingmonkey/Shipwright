@@ -24,6 +24,7 @@
 #include "soh/Enhancements/kaleido.h"
 #include <soh_assets.h>
 #include <libultraship/bridge/consolevariablebridge.h>
+#include "soh/XrWindow.h"
 
 static void* sEquipmentFRATexs[] = {
     gPauseEquipment00FRATex, gPauseEquipment01Tex, gPauseEquipment02Tex, gPauseEquipment03Tex, gPauseEquipment04Tex,
@@ -3504,6 +3505,9 @@ void KaleidoScope_Draw(PlayState* play) {
 
     OPEN_DISPS(play->state.gfxCtx);
 
+    XrWindow_BeginFlat(&POLY_OPA_DISP);
+    XrWindow_BeginFlat(&POLY_XLU_DISP);
+
     pauseCtx->stickRelX = input->rel.stick_x;
     pauseCtx->stickRelY = input->rel.stick_y;
 
@@ -3542,6 +3546,9 @@ void KaleidoScope_Draw(PlayState* play) {
     }
 
     func_800AAA50(&play->view, 15);
+
+    XrWindow_EndFlat(&POLY_XLU_DISP);
+    XrWindow_EndFlat(&POLY_OPA_DISP);
 
     CLOSE_DISPS(play->state.gfxCtx);
 }
