@@ -1,9 +1,11 @@
 #include "framebuffer_effects.h"
 #include "variables.h"
 #include "OTRGlobals.h"
+#include "XrWindow.h"
 
 int gfx_create_framebuffer(uint32_t width, uint32_t height, uint32_t native_width, uint32_t native_height,
                            uint8_t resize);
+void gfx_register_stereo_fb_pair(int fbId, int rightFbId);
 
 s32 gPauseFrameBuffer = -1;
 s32 gBlurFrameBuffer = -1;
@@ -17,6 +19,10 @@ s32 gN64ResFrameBuffer = -1;
 void FB_CreateFramebuffers(void) {
     if (gPauseFrameBuffer == -1) {
         gPauseFrameBuffer = gfx_create_framebuffer(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, true);
+        if (XrWindow_IsHeadset() && gPauseFrameBuffer >= 0) {
+            gfx_register_stereo_fb_pair(gPauseFrameBuffer, gfx_create_framebuffer(SCREEN_WIDTH, SCREEN_HEIGHT,
+                                                                                  SCREEN_WIDTH, SCREEN_HEIGHT, true));
+        }
     }
 
     if (gBlurFrameBuffer == -1) {
