@@ -10,6 +10,7 @@ class Fast3dWindow;
 namespace SoH {
 bool IsHeadsetWindow();
 void XrWindow_Sync(Fast::Fast3dWindow* wnd);
+bool XrWindow_MenuScale(float* scale);
 } // namespace SoH
 
 extern "C" {
