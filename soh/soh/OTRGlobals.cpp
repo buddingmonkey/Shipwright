@@ -871,6 +871,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 #endif
         // Process window events for resize, mouse, keyboard events
         wnd->HandleEvents();
+        ScaleImGui();
         if (wnd->GetWidth() == 0 || wnd->GetHeight() == 0) {
             continue;
         }
@@ -1158,11 +1159,15 @@ static float ImGuiDensityScale() {
 
 void OTRGlobals::ScaleImGui() {
     int32_t imGuiScaleIndex = CVarGetInteger(CVAR_SETTING("ImGuiScale"), defaultImGuiScale);
-    if (imGuiScaleIndex == previousImGuiScaleIndex) {
+    float scale = imguiScaleOptionToValue[imGuiScaleIndex] * ImGuiDensityScale();
+    float headsetScale;
+    if (SoH::XrWindow_MenuScale(&headsetScale)) {
+        scale = imguiScaleOptionToValue[imGuiScaleIndex] * headsetScale;
+    }
+    if (imGuiScaleIndex == previousImGuiScaleIndex && fabsf(scale - previousImGuiScale) < 0.001f) {
         return;
     }
 
-    float scale = imguiScaleOptionToValue[imGuiScaleIndex] * ImGuiDensityScale();
     float newScale = scale / previousImGuiScale;
     ImGui::GetStyle().ScaleAllSizes(newScale);
     ImGui::GetIO().FontGlobalScale = scale;
@@ -1737,6 +1742,7 @@ static void RunShaderPrewarm() {
             static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
         ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, UIWidgets::ColorValues.at(UIWidgets::Colors::DarkGray));
+        OTRGlobals::Instance->ScaleImGui();
         gui->StartDraw();
         sohFast3dWindow->StartFrame();
         sohFast3dWindow->RunGuiOnly();
@@ -2038,6 +2044,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
 
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
+    OTRGlobals::Instance->ScaleImGui();
 
 #ifdef SOH_MOBILE
     ParkWhileOffScreen();

@@ -22,6 +22,8 @@ constexpr int RATE_SETTLE_TICKS = 90;
 constexpr float STICK_RANGE = 80.0f;
 constexpr float PULL_POINT = 0.66f;
 constexpr float C_POINT = 0.5f;
+constexpr float MENU_ANGLE_PER_UNIT = 0.0009f;
+constexpr float MENU_ANGLE_MIN = 0.75f;
 
 void SelectRefreshRate(Fast::Fast3dWindow* wnd) {
     const int cap = CVarGetInteger(CVAR_SETTING("XrMaxRate"), 120);
@@ -96,6 +98,23 @@ namespace SoH {
 bool IsHeadsetWindow() {
 #ifdef ENABLE_XR_WINDOW
     return Fast::IsXrPresenting();
+#else
+    return false;
+#endif
+}
+
+bool XrWindow_MenuScale(float* scale) {
+#ifdef ENABLE_XR_WINDOW
+    if (!IsHeadsetWindow()) {
+        return false;
+    }
+    auto window = Ship::Context::GetRawInstance()->GetWindow();
+    const float angularWidth = Fast::GetXrWindowAngularWidth();
+    if (angularWidth <= 0.0f || window == nullptr || window->GetWidth() == 0) {
+        return false;
+    }
+    *scale = MENU_ANGLE_PER_UNIT * (float)window->GetWidth() / std::max(angularWidth, MENU_ANGLE_MIN);
+    return true;
 #else
     return false;
 #endif
