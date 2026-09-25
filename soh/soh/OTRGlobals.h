@@ -85,6 +85,8 @@ class OTRGlobals {
     bool hasOriginal;
     ImFont* CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont = false);
 };
+
+float ImGuiDensityScale();
 #endif
 
 #ifndef __cplusplus
