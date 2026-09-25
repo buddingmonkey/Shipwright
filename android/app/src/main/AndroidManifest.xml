@@ -23,8 +23,10 @@
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
         android:isGame="true"
         android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/SohTheme">
 
         <uses-native-library android:name="libopenxr.google.so" android:required="false" />
