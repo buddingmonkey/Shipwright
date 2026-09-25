@@ -937,6 +937,15 @@ void Menu::DrawElement() {
     std::string sectionMenuId = sectionIndex + " Settings";
     size_t columns = sidebar->at(sectionIndex).columnCount;
     size_t columnFuncs = sidebar->at(sectionIndex).columnWidgets.size();
+    std::vector<size_t> drawnColumns;
+    for (size_t i = 0; i < columnFuncs; i++) {
+        if (PopoutWindowsUsable() || !sidebar->at(sectionIndex).columnWidgets.at(i).empty()) {
+            drawnColumns.push_back(i);
+        }
+    }
+    if (!PopoutWindowsUsable()) {
+        columns = std::max<size_t>(1, std::min(columns, drawnColumns.size()));
+    }
     if (windowWidth < 800 * density) {
         columns = 1;
     }
@@ -978,7 +987,8 @@ void Menu::DrawElement() {
                 }
             }
         }
-        for (size_t i = 0; i < columnFuncs; i++) {
+        for (size_t n = 0; n < drawnColumns.size(); n++) {
+            size_t i = drawnColumns[n];
             std::string sectionId = spdlog::fmt_lib::format("{} Column {}", sectionMenuId, i);
             if (useColumns) {
                 ImGui::SetNextWindowSizeConstraints({ columnWidth, 0 }, { columnWidth, columnHeight });
@@ -993,7 +1003,7 @@ void Menu::DrawElement() {
             if (useColumns) {
                 ImGui::EndChild();
             }
-            if (i < columns - 1) {
+            if (n < columns - 1) {
                 ImGui::SameLine();
             }
         }
