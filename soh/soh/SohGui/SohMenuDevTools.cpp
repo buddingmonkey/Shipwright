@@ -40,9 +40,12 @@ void SohMenu::AddMenuDevTools() {
     AddSidebarEntry("Dev Tools", "General", 3);
     WidgetPath path = { "Dev Tools", "General", SECTION_COLUMN_1 };
 
-    AddWidget(path, "Popout Menu", WIDGET_CVAR_CHECKBOX)
-        .CVar("gSettings.Menu.Popout")
-        .Options(CheckboxOptions().Tooltip("Changes the menu display from overlay to windowed."));
+    CheckboxOptions popoutMenuOptions = CheckboxOptions().Tooltip("Changes the menu display from overlay to windowed.");
+    if (!Ship::PopoutWindowsUsable()) {
+        popoutMenuOptions.Disabled(true).DisabledTooltip(
+            "Not available on this device. There is no desktop window to put the menu in.");
+    }
+    AddWidget(path, "Popout Menu", WIDGET_CVAR_CHECKBOX).CVar("gSettings.Menu.Popout").Options(popoutMenuOptions);
     AddWidget(path, "Debug Mode", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_DEVELOPER_TOOLS("DebugEnabled"))
         .Options(

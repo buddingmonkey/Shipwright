@@ -66,4 +66,5 @@ class Menu : public GuiWindow {
     float windowWidth;
     UIWidgets::Colors menuThemeIndex;
 };
+bool PopoutWindowsUsable();
 } // namespace Ship
