@@ -1160,7 +1160,15 @@ static float ImGuiDensityScale() {
         }
         return 1.0f;
     }();
-    return density;
+    auto window = Ship::Context::GetRawInstance()->GetWindow();
+    if (window == nullptr) {
+        return density;
+    }
+    float shortSide = static_cast<float>(std::min(window->GetWidth(), window->GetHeight()));
+    if (shortSide <= 0.0f) {
+        return density;
+    }
+    return std::clamp(shortSide / 600.0f, 1.0f, density);
 #else
     return 1.0f;
 #endif
