@@ -710,15 +710,16 @@ void Menu::DrawElement() {
     windowHeight = window->WorkRect.GetHeight();
     windowWidth = window->WorkRect.GetWidth();
 
+    const float density = ImGuiDensityScale();
     ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f * density, 8.0f * density));
     std::string headerIndex = CVarGetString(headerCvar, "Settings");
     ImVec2 pos = window->DC.CursorPos;
     float centerX = pos.x + windowWidth / 2 - (style.ItemSpacing.x * (menuEntries.size() + 1));
     std::vector<ImVec2> headerSizes;
     float headerWidth = 0.0f;
     bool headerSearch = !CVarGetInteger(CVAR_SETTING("Menu.SidebarSearch"), 0);
-    const float searchWidth = std::max(200.0f, ImGui::CalcTextSize("Search...").x + style.ItemSpacing.x);
+    const float searchWidth = std::max(200.0f * density, ImGui::CalcTextSize("Search...").x + style.ItemSpacing.x);
     if (headerSearch) {
         headerWidth += searchWidth;
     }
@@ -732,10 +733,10 @@ void Menu::DrawElement() {
     // 5% of screen width/height padding on both sides above those resolutions.
     // Menu width will never exceed a 16:9 aspect ratio.
     ImVec2 menuSize = { windowWidth, windowHeight };
-    if (windowWidth > 1280) {
+    if (windowWidth > 1280 * density && (density <= 1.0f || windowHeight > 800 * density)) {
         menuSize.x = std::fminf(windowWidth * 0.9f, (windowHeight * 1.77f));
     }
-    if (windowHeight > 800) {
+    if (windowHeight > 800 * density) {
         menuSize.y = windowHeight * 0.9f;
     }
 
@@ -886,8 +887,8 @@ void Menu::DrawElement() {
     ImGui::SetNextWindowPos(pos + style.ItemSpacing * 2);
 
     // Increase sidebar width on larger screens to accommodate people scaling their menus.
-    float sidebarWidth = 200 - style.ItemSpacing.x;
-    if (menuSize.x > 1600) {
+    float sidebarWidth = 200 * density - style.ItemSpacing.x + (density > 1.0f ? style.ScrollbarSize : 0.0f);
+    if (menuSize.x > 1600 * density) {
         sidebarWidth = menuSize.x * 0.15f;
     }
 
@@ -936,7 +937,7 @@ void Menu::DrawElement() {
     std::string sectionMenuId = sectionIndex + " Settings";
     size_t columns = sidebar->at(sectionIndex).columnCount;
     size_t columnFuncs = sidebar->at(sectionIndex).columnWidgets.size();
-    if (windowWidth < 800) {
+    if (windowWidth < 800 * density) {
         columns = 1;
     }
     float columnWidth = (sectionWidth - style.ItemSpacing.x * columns) / columns;

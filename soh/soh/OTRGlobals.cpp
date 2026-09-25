@@ -1149,7 +1149,7 @@ void OTRGlobals::Initialize() {
 OTRGlobals::~OTRGlobals() {
 }
 
-static float ImGuiDensityScale() {
+float ImGuiDensityScale() {
 #ifdef __ANDROID__
     static const float density = []() {
         float ddpi = 0.0f;
