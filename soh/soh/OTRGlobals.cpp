@@ -362,6 +362,21 @@ static void ParkWhileOffScreen() {
 }
 #endif
 
+static spdlog::level::level_enum SohLogLevel() {
+#if (_DEBUG)
+    auto defaultLogLevel = spdlog::level::trace;
+#else
+    auto defaultLogLevel = spdlog::level::info;
+#endif
+    return static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
+}
+
+static void ApplySohLogFormat() {
+    auto logger = Ship::Context::GetRawInstance()->GetLogger();
+    logger->set_level(SohLogLevel());
+    logger->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
+}
+
 OTRGlobals::OTRGlobals() {
     context = Ship::Context::CreateUninitializedInstance("Ship of Harkinian", appShortName, "shipofharkinian.json");
 
@@ -387,15 +402,9 @@ OTRGlobals::OTRGlobals() {
     context->InitConfiguration();
     context->InitConsoleVariables();
 
-#if (_DEBUG)
-    auto defaultLogLevel = spdlog::level::trace;
-#else
-    auto defaultLogLevel = spdlog::level::info;
-#endif
-    auto logLevel =
-        static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
+    auto logLevel = SohLogLevel();
     context->InitLogging(logLevel, logLevel);
-    context->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
+    ApplySohLogFormat();
 
 #ifdef SOH_MOBILE
     if (CVarGetInteger(CVAR_MSAA_VALUE, 0) == 0) {
@@ -1790,6 +1799,7 @@ static void RunShaderPrewarm() {
 extern "C" void InitOTR(int argc, char* argv[]) {
     OTRGlobals::Instance = new OTRGlobals();
     OTRGlobals::Instance->RunExtract(argc, argv);
+    ApplySohLogFormat();
     RunShaderPrewarm();
 
     OTRGlobals::Instance->Initialize();
