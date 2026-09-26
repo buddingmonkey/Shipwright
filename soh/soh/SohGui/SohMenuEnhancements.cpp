@@ -1306,7 +1306,7 @@ void SohMenu::AddMenuEnhancements() {
         .Options(
             ComboboxOptions()
                 .ComboMap(zFightingOptions)
-                .DefaultIndex(ZFIGHT_FIX_DISABLED)
+                .DefaultIndex(SOH_DEFAULT_DIRT_PATH_FIX)
                 .Tooltip("Disabled: Paths vanish more the higher the resolution (Z-Fighting is based on resolution).\n"
                          "Consistent: Certain paths vanish the same way in all resolutions.\n"
                          "No Vanish: Paths do not vanish, Link seems to sink in to some paths.\n"
