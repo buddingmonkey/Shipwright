@@ -172,9 +172,10 @@ void Skin_DrawLimb(GraphicsContext* gfxCtx, Skin* skin, s32 limbIndex, Gfx* dlis
     }
 
     if (gfx != NULL) {
-        Mtx* mtx = SkinMatrix_MtxFToNewMtx(gfxCtx, &gSkinLimbMatrices[limbIndex]);
+        Mtx* mtx = Graph_Alloc(gfxCtx, sizeof(Mtx));
 
         if (mtx != NULL) {
+            guMtxF2L(&gSkinLimbMatrices[limbIndex], mtx);
             gSPMatrix(POLY_OPA_DISP++, mtx, G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPDisplayList(POLY_OPA_DISP++, gfx);
             gSPPopMatrix(POLY_OPA_DISP++, G_MTX_MODELVIEW);
