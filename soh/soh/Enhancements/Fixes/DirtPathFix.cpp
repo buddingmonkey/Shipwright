@@ -3,13 +3,14 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/enhancementTypes.h"
 #include "soh/ShipInit.hpp"
+#include "soh/OTRGlobals.h"
 
 extern "C" {
 #include "z64.h"
 extern PlayState* gPlayState;
 }
 
-static constexpr ZFightingFixType CVAR_DIRT_PATH_DEFAULT = ZFIGHT_FIX_DISABLED;
+static constexpr ZFightingFixType CVAR_DIRT_PATH_DEFAULT = static_cast<ZFightingFixType>(SOH_DEFAULT_DIRT_PATH_FIX);
 #define CVAR_DIRT_PATH_NAME CVAR_ENHANCEMENT("SceneSpecificDirtPathFix")
 #define CVAR_DIRT_PATH_VALUE CVarGetInteger(CVAR_DIRT_PATH_NAME, CVAR_DIRT_PATH_DEFAULT)
 
