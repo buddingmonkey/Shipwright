@@ -2280,6 +2280,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
         const bool finalTime = (i == drawCount - 1) && (time + count * step == denom);
         std::unordered_map<Mtx*, MtxF> mtx_replacements =
             finalTime ? std::unordered_map<Mtx*, MtxF>() : FrameInterpolation_Interpolate(subframeTime / denom);
+        FrameInterpolation_InterpolateSkinVertices(finalTime ? 1.0f : subframeTime / denom);
         intp->mInterpolationT = subframeTime / denom;
 #ifdef ENABLE_DEBUG_TOOLS
         intp->mDrawCallCount = 0;
@@ -2300,6 +2301,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
 #endif
         intp->mInterpolationIndex++;
     }
+    FrameInterpolation_EndSkinVertices();
     if (sPacing.active) {
         if (sPacing.drawn < count) {
             std::this_thread::sleep_until(sPacing.nextTick - std::chrono::nanoseconds(sPacing.filteredLogicNs));
