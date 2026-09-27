@@ -111,6 +111,10 @@ public class SohActivity extends SDLActivity {
         return softKeyboardResult;
     }
 
+    public int systemKeyboardTakesFocus() {
+        return getPackageManager().hasSystemFeature("oculus.software.overlay_keyboard") ? 1 : 0;
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
