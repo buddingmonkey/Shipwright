@@ -8,8 +8,14 @@ extern PlayState* gPlayState;
 Mtx* sSkyboxDrawMatrix;
 
 Mtx* SkyboxDraw_UpdateMatrix(SkyboxContext* skyboxCtx, f32 x, f32 y, f32 z) {
+    f32 skyScale = XrWindow_SkyScale(gPlayState != NULL ? gPlayState->view.zFar : 0.0f);
+
     Matrix_Translate(x, y, z, MTXMODE_NEW);
-    Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
+    if (skyScale > 0.0f) {
+        Matrix_Scale(skyScale, skyScale, skyScale, MTXMODE_APPLY);
+    } else {
+        Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
+    }
     Matrix_RotateX(skyboxCtx->rot.x, MTXMODE_APPLY);
     Matrix_RotateY(skyboxCtx->rot.y, MTXMODE_APPLY);
     Matrix_RotateZ(skyboxCtx->rot.z, MTXMODE_APPLY);
