@@ -26,6 +26,7 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -48,6 +49,7 @@ public class SohActivity extends SDLActivity {
     private static final String FALLBACK_IMPORT_NAME = "rom.z64";
 
     private volatile boolean romPickPending = false;
+    private final CountDownLatch assetsReady = new CountDownLatch(1);
 
     @Override
     protected String[] getLibraries() {
@@ -56,11 +58,16 @@ public class SohActivity extends SDLActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        try {
-            unpackAssets(dataDir());
-        } catch (IOException e) {
-            Log.e(TAG, "Could not unpack the shipped assets", e);
-        }
+        File media = dataDir();
+        new Thread(() -> {
+            try {
+                unpackAssets(media);
+            } catch (IOException e) {
+                Log.e(TAG, "Could not unpack the shipped assets", e);
+            } finally {
+                assetsReady.countDown();
+            }
+        }, "UnpackAssets").start();
         super.onCreate(savedInstanceState);
         mLayout.post(this::goImmersive);
         mLayout.setOnApplyWindowInsetsListener((view, insets) -> {
@@ -68,6 +75,16 @@ public class SohActivity extends SDLActivity {
             return view.onApplyWindowInsets(insets);
         });
         mLayout.requestApplyInsets();
+    }
+
+    @Override
+    protected String[] getArguments() {
+        try {
+            assetsReady.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return super.getArguments();
     }
 
     @Override
@@ -239,6 +256,12 @@ public class SohActivity extends SDLActivity {
     }
 
     private void unpackAssets(File media) throws IOException {
+        synchronized (SohActivity.class) {
+            unpackAssetsOnce(media);
+        }
+    }
+
+    private void unpackAssetsOnce(File media) throws IOException {
         if (media == null) {
             throw new IOException("No app folder");
         }
