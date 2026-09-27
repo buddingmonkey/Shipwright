@@ -9,8 +9,8 @@
 #endif
 #ifdef ENABLE_DEBUG_TOOLS
 #include "soh/TouchControls/DebugPad.h"
-#include "soh/XrWindow.h"
 #endif
+#include "soh/XrWindow.h"
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
