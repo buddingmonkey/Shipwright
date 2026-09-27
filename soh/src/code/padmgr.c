@@ -10,6 +10,7 @@
 #ifdef ENABLE_DEBUG_TOOLS
 #include "soh/TouchControls/DebugPad.h"
 #endif
+#include "soh/XrWindow.h"
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
@@ -330,6 +331,7 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
     TouchControls_Poll();
     TouchControls_MergeInto(&padMgr->pads[0]);
 #endif
+    XrWindow_MergePad(&padMgr->pads[0]);
 #ifdef ENABLE_DEBUG_TOOLS
     DebugPad_MergeInto(&padMgr->pads[0]);
 #endif
