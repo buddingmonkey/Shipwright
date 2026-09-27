@@ -432,6 +432,30 @@ void SohMenu::AddMenuSettings() {
                      .DefaultValue(2.0f)
                      .Format("%.2f m"));
 #ifdef ENABLE_OPENXR
+    AddWidget(path, "Depth Limit", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("XrDepthLimit"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(FloatSliderOptions()
+                     .Tooltip("The largest angle between what each eye sees of the window and of the farthest "
+                              "part of the world. This angle sets how hard your eyes work to see the depth. The "
+                              "world stays behind the window; a smaller limit makes all of it less "
+                              "deep.\n\nAt 1 degree or less, most people can play for a long time with "
+                              "no eye strain. If the depth is not strong enough, increase this limit, or the "
+                              "Diorama Depth if it is the smaller of the two.")
+                     .Min(0.25f)
+                     .Max(3.0f)
+                     .DefaultValue(1.0f)
+                     .Format("%.2f degrees"));
+    AddWidget(path, "Steady Depth", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("XrSteadyDepth"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "The nearest thing that the camera sees always sits on the window. When the camera "
+            "goes near a wall or into grass, the rest of the world moves back. With this "
+            "setting, the world becomes less deep at that time instead, and Link and the other "
+            "things that you look at stay at the same depth."));
     AddWidget(path, "Window Range", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("XrWindowRange"))
         .RaceDisable(false)

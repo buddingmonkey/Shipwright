@@ -152,6 +152,8 @@ void XrWindow_Sync(Fast::Fast3dWindow* wnd) {
     Fast::SetXrStereo(CVarGetInteger(CVAR_SETTING("XrStereo"), 1) != 0);
     Fast::SetXrEdgeSoftness(CVarGetFloat(CVAR_SETTING("XrEdgeSoftness"), 0.36f));
     Fast::SetXrEdgeFloat(CVarGetFloat(CVAR_SETTING("XrEdgeFloat"), 0.15f));
+    Fast::SetXrDepthLimit(CVarGetFloat(CVAR_SETTING("XrDepthLimit"), 1.0f));
+    Fast::SetXrSteadyDepth(CVarGetInteger(CVAR_SETTING("XrSteadyDepth"), 1) != 0);
 #endif
 }
 
@@ -264,9 +266,16 @@ extern "C" void XrWindow_MergePad(void* contPad) {
     }
 }
 
+extern "C" void XrWindow_SetSubjectDistance(float units) {
+    Fast::SetXrSubjectDistance(units);
+}
+
 #else
 
 extern "C" void XrWindow_MergePad(void* contPad) {
+}
+
+extern "C" void XrWindow_SetSubjectDistance(float units) {
 }
 
 #endif
