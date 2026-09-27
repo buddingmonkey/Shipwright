@@ -56,6 +56,12 @@ void FrameInterpolation_RecordMatrixRotateAxis(f32 angle, Vec3f* axis, u8 mode);
 
 void FrameInterpolation_RecordSkinMatrixMtxFToMtx(MtxF* src, Mtx* dest);
 
+void FrameInterpolation_RecordSkinVertices(const void* key, Vtx* buf, u16 count);
+
+void FrameInterpolation_InterpolateSkinVertices(float step);
+
+void FrameInterpolation_EndSkinVertices(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,4 +1,5 @@
 #include "global.h"
+#include "soh/frame_interpolation.h"
 
 MtxF gSkinLimbMatrices[60]; // holds matrices for each limb of the skeleton currently being drawn
 
@@ -126,6 +127,8 @@ void Skin_ApplyLimbModifications(GraphicsContext* gfxCtx, Skin* skin, s32 limbIn
                             vtxBuf, &vtxPoint);
     }
 
+    FrameInterpolation_RecordSkinVertices(vtxEntry, vtxBuf, data->totalVtxCount);
+
     gSPSegment(POLY_OPA_DISP++, 0x08, vtxEntry->buf[vtxEntry->index]);
 
     vtxEntry->index = (vtxEntry->index == 0) ? 1 : 0;
@@ -172,10 +175,9 @@ void Skin_DrawLimb(GraphicsContext* gfxCtx, Skin* skin, s32 limbIndex, Gfx* dlis
     }
 
     if (gfx != NULL) {
-        Mtx* mtx = Graph_Alloc(gfxCtx, sizeof(Mtx));
+        Mtx* mtx = SkinMatrix_MtxFToNewMtx(gfxCtx, &gSkinLimbMatrices[limbIndex]);
 
         if (mtx != NULL) {
-            guMtxF2L(&gSkinLimbMatrices[limbIndex], mtx);
             gSPMatrix(POLY_OPA_DISP++, mtx, G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPDisplayList(POLY_OPA_DISP++, gfx);
             gSPPopMatrix(POLY_OPA_DISP++, G_MTX_MODELVIEW);
