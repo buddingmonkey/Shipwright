@@ -22,6 +22,7 @@ void XrWindow_EndFlat(Gfx** gfx);
 void XrWindow_BeginUnmeasured(Gfx** gfx);
 void XrWindow_EndUnmeasured(Gfx** gfx);
 void XrWindow_MergePad(void* contPad);
+void XrWindow_SetSubjectDistance(float units);
 float XrWindow_SkyScale(float zFar);
 bool XrWindow_IsHeadset(void);
 

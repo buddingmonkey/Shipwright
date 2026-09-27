@@ -1356,6 +1356,9 @@ void Play_Draw(PlayState* play) {
     gSPSegment(OVERLAY_DISP++, 0x00, NULL);
 
     bool flatRoom = XrWindow_IsHeadset() && Play_HasPrerenderedBackground(play);
+    if (XrWindow_IsHeadset()) {
+        XrWindow_SetSubjectDistance(Math_Vec3f_DistXYZ(&play->view.eye, &play->view.lookAt));
+    }
     if (flatRoom) {
         XrWindow_BeginFlat(&POLY_OPA_DISP);
         XrWindow_BeginFlat(&POLY_XLU_DISP);
