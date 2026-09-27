@@ -6,6 +6,7 @@ import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.ResultReceiver;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.View;
@@ -13,6 +14,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,6 +51,7 @@ public class SohActivity extends SDLActivity {
     private static final String FALLBACK_IMPORT_NAME = "rom.z64";
 
     private volatile boolean romPickPending = false;
+    private volatile int softKeyboardResult = -1;
     private final CountDownLatch assetsReady = new CountDownLatch(1);
 
     @Override
@@ -85,6 +88,27 @@ public class SohActivity extends SDLActivity {
             Thread.currentThread().interrupt();
         }
         return super.getArguments();
+    }
+
+    public void probeSoftKeyboard() {
+        softKeyboardResult = -1;
+        runOnUiThread(() -> {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm == null || mTextEdit == null) {
+                softKeyboardResult = InputMethodManager.RESULT_UNCHANGED_HIDDEN;
+                return;
+            }
+            imm.showSoftInput(mTextEdit, 0, new ResultReceiver(null) {
+                @Override
+                protected void onReceiveResult(int resultCode, Bundle resultData) {
+                    softKeyboardResult = resultCode;
+                }
+            });
+        });
+    }
+
+    public int softKeyboardResult() {
+        return softKeyboardResult;
     }
 
     @Override
