@@ -1304,6 +1304,23 @@ void Play_DrawOverlayElements(PlayState* play) {
     }
 }
 
+static bool Play_HasPrerenderedBackground(PlayState* play) {
+    if ((play->roomCtx.curRoom.meshHeader != NULL) && (play->roomCtx.curRoom.meshHeader->base.type == 1)) {
+        return true;
+    }
+    switch (play->skyboxId) {
+        case SKYBOX_NONE:
+        case SKYBOX_NORMAL_SKY:
+        case SKYBOX_OVERCAST_SUNSET:
+        case SKYBOX_CUTSCENE_MAP:
+        case SKYBOX_UNSET_1D:
+        case SKYBOX_UNSET_27:
+            return false;
+        default:
+            return true;
+    }
+}
+
 void Play_Draw(PlayState* play) {
     GraphicsContext* gfxCtx = play->state.gfxCtx;
     Lights* sp228;
@@ -1337,6 +1354,13 @@ void Play_Draw(PlayState* play) {
     gSPSegment(POLY_OPA_DISP++, 0x00, NULL);
     gSPSegment(POLY_XLU_DISP++, 0x00, NULL);
     gSPSegment(OVERLAY_DISP++, 0x00, NULL);
+
+    bool flatRoom = XrWindow_IsHeadset() && Play_HasPrerenderedBackground(play);
+    if (flatRoom) {
+        XrWindow_BeginFlat(&POLY_OPA_DISP);
+        XrWindow_BeginFlat(&POLY_XLU_DISP);
+        XrWindow_BeginFlat(&OVERLAY_DISP);
+    }
 
     gSPSegment(POLY_OPA_DISP++, 0x04, play->objectCtx.status[play->objectCtx.mainKeepIndex].segment);
     gSPSegment(POLY_XLU_DISP++, 0x04, play->objectCtx.status[play->objectCtx.mainKeepIndex].segment);
@@ -1634,6 +1658,12 @@ Play_Draw_skip:
     }
 
     Camera_Finish(GET_ACTIVE_CAM(play));
+
+    if (flatRoom) {
+        XrWindow_EndFlat(&OVERLAY_DISP);
+        XrWindow_EndFlat(&POLY_XLU_DISP);
+        XrWindow_EndFlat(&POLY_OPA_DISP);
+    }
 
     CLOSE_DISPS(gfxCtx);
 

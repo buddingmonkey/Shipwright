@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libultraship/libultra/gbi.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 namespace Fast {
@@ -22,6 +23,7 @@ void XrWindow_BeginUnmeasured(Gfx** gfx);
 void XrWindow_EndUnmeasured(Gfx** gfx);
 void XrWindow_MergePad(void* contPad);
 float XrWindow_SkyScale(float zFar);
+bool XrWindow_IsHeadset(void);
 
 #ifdef __cplusplus
 }

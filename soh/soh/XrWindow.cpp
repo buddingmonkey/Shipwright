@@ -157,6 +157,10 @@ void XrWindow_Sync(Fast::Fast3dWindow* wnd) {
 
 } // namespace SoH
 
+extern "C" bool XrWindow_IsHeadset(void) {
+    return SoH::IsHeadsetWindow();
+}
+
 extern "C" float XrWindow_SkyScale(float zFar) {
     if (!SoH::IsHeadsetWindow() || zFar <= SKY_CORNER) {
         return 0.0f;
