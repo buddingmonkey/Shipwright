@@ -190,6 +190,15 @@ uint32_t previous_camera_epoch;
 Recording current_recording;
 Recording previous_recording;
 
+struct SkinVertices {
+    Vtx* buf;
+    vector<Vtx> vtx;
+};
+
+unordered_map<const void*, SkinVertices> current_skin_vertices;
+unordered_map<const void*, SkinVertices> previous_skin_vertices;
+bool skin_vertices_writable;
+
 bool next_is_actor_pos_rot_matrix;
 bool has_inv_actor_mtx;
 MtxF inv_actor_mtx;
@@ -452,6 +461,9 @@ unordered_map<Mtx*, MtxF> FrameInterpolation_Interpolate(float step) {
 void FrameInterpolation_StartRecord(void) {
     previous_recording = std::move(current_recording);
     current_recording = {};
+    previous_skin_vertices = std::move(current_skin_vertices);
+    current_skin_vertices.clear();
+    skin_vertices_writable = false;
     current_path.clear();
     current_path.push_back(&current_recording.root_path);
     if (OTRGlobals::Instance->GetInterpolationFPS() != 20) {
@@ -461,6 +473,7 @@ void FrameInterpolation_StartRecord(void) {
 
 void FrameInterpolation_StopRecord(void) {
     previous_camera_epoch = camera_epoch;
+    skin_vertices_writable = is_recording;
     is_recording = false;
 }
 
@@ -600,6 +613,41 @@ void FrameInterpolation_RecordSkinMatrixMtxFToMtx(MtxF* src, Mtx* dest) {
     if (!is_recording)
         return;
     FrameInterpolation_RecordMatrixMtxFToMtx(src, dest);
+}
+
+void FrameInterpolation_RecordSkinVertices(const void* key, Vtx* buf, u16 count) {
+    if (!is_recording)
+        return;
+    auto& entry = current_skin_vertices[key];
+    entry.buf = buf;
+    entry.vtx.assign(buf, buf + count);
+}
+
+void FrameInterpolation_InterpolateSkinVertices(float step) {
+    if (!skin_vertices_writable)
+        return;
+    const float w = 1.0f - step;
+    for (auto& [key, cur] : current_skin_vertices) {
+        auto it = previous_skin_vertices.find(key);
+        if (step >= 1.0f || it == previous_skin_vertices.end() || it->second.vtx.size() != cur.vtx.size()) {
+            std::copy(cur.vtx.begin(), cur.vtx.end(), cur.buf);
+            continue;
+        }
+        const vector<Vtx>& old = it->second.vtx;
+        for (size_t i = 0; i < cur.vtx.size(); i++) {
+            const Vtx_tn& o = old[i].n;
+            const Vtx_tn& n = cur.vtx[i].n;
+            Vtx_tn& dst = cur.buf[i].n;
+            for (int j = 0; j < 3; j++) {
+                dst.ob[j] = (s16)lroundf(w * o.ob[j] + step * n.ob[j]);
+                dst.n[j] = (s8)lroundf(w * o.n[j] + step * n.n[j]);
+            }
+        }
+    }
+}
+
+void FrameInterpolation_EndSkinVertices(void) {
+    skin_vertices_writable = false;
 }
 
 // https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
