@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include <locale.h>
 #endif
-#ifdef __IOS__
+#ifdef SOH_MOBILE
 #include <SDL_main.h>
 #endif
 

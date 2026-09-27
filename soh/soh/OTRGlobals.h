@@ -1,7 +1,7 @@
 // vim: ft=cpp
 #pragma once
 
-#ifdef __IOS__
+#ifdef SOH_MOBILE
 #define SOH_DEFAULT_MATCH_REFRESH_RATE 1
 #define SOH_DEFAULT_MSAA 4
 #else
