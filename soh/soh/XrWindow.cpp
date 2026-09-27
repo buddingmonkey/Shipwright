@@ -24,6 +24,8 @@ constexpr float PULL_POINT = 0.66f;
 constexpr float C_POINT = 0.5f;
 constexpr float MENU_ANGLE_PER_UNIT = 0.0009f;
 constexpr float MENU_ANGLE_MIN = 0.75f;
+constexpr float SKY_CORNER = 218.3f;
+constexpr float SKY_REACH = 0.9f;
 
 void SelectRefreshRate(Fast::Fast3dWindow* wnd) {
     const int cap = CVarGetInteger(CVAR_SETTING("XrMaxRate"), 120);
@@ -155,6 +157,13 @@ void XrWindow_Sync(Fast::Fast3dWindow* wnd) {
 
 } // namespace SoH
 
+extern "C" float XrWindow_SkyScale(float zFar) {
+    if (!SoH::IsHeadsetWindow() || zFar <= SKY_CORNER) {
+        return 0.0f;
+    }
+    return SKY_REACH * zFar / SKY_CORNER;
+}
+
 #ifdef ENABLE_XR_WINDOW
 
 extern "C" void XrWindow_BeginFlat(Gfx** gfx) {
@@ -165,11 +174,11 @@ extern "C" void XrWindow_EndFlat(Gfx** gfx) {
     gSPXrFlatProjection((*gfx)++, 0);
 }
 
-extern "C" void XrWindow_BeginSceneDepth(Gfx** gfx) {
+extern "C" void XrWindow_BeginUnmeasured(Gfx** gfx) {
     gSPXrSceneDepth((*gfx)++, 1);
 }
 
-extern "C" void XrWindow_EndSceneDepth(Gfx** gfx) {
+extern "C" void XrWindow_EndUnmeasured(Gfx** gfx) {
     gSPXrSceneDepth((*gfx)++, 0);
 }
 
@@ -181,10 +190,10 @@ extern "C" void XrWindow_BeginFlat(Gfx** gfx) {
 extern "C" void XrWindow_EndFlat(Gfx** gfx) {
 }
 
-extern "C" void XrWindow_BeginSceneDepth(Gfx** gfx) {
+extern "C" void XrWindow_BeginUnmeasured(Gfx** gfx) {
 }
 
-extern "C" void XrWindow_EndSceneDepth(Gfx** gfx) {
+extern "C" void XrWindow_EndUnmeasured(Gfx** gfx) {
 }
 
 #endif
