@@ -26,7 +26,7 @@ namespace {
 using ResourceFuture = std::shared_future<std::shared_ptr<Ship::IResource>>;
 
 constexpr auto kHoldLimit = std::chrono::seconds(5);
-constexpr int kSkyPaths = 24;
+constexpr int kSkyPaths = 48;
 constexpr std::array<const char*, 8> kResidentDirs = {
     "alt/objects/gameplay_keep/",     "alt/objects/object_link_boy/",   "alt/objects/object_link_child/",
     "alt/textures/icon_item_static/", "alt/textures/do_action_static/", "alt/textures/parameter_static/",

@@ -616,7 +616,7 @@ extern SkyboxTableEntry sSkyboxTable[];
 
 s32 Environment_GetSkyboxPrefetch(PlayState* play, s32 ahead, const char** paths, s32 max) {
     EnvironmentContext* envCtx = &play->envCtx;
-    u8 rows[2] = { envCtx->unk_17, envCtx->unk_18 };
+    u8 rows[4] = { envCtx->unk_17, envCtx->unk_18, 0, 1 };
     s32 count = 0;
     s32 r;
     s32 i;
@@ -627,8 +627,8 @@ s32 Environment_GetSkyboxPrefetch(PlayState* play, s32 ahead, const char** paths
         return 0;
     }
 
-    for (r = 0; r < 2; r++) {
-        if (rows[r] >= ARRAY_COUNT(D_8011FC1C)) {
+    for (r = 0; r < ARRAY_COUNT(rows); r++) {
+        if (rows[r] >= ARRAY_COUNT(D_8011FC1C) || (r >= 2 && (rows[r] == rows[0] || rows[r] == rows[1]))) {
             continue;
         }
         for (i = 0; i < ARRAY_COUNT(D_8011FC1C[0]); i++) {
