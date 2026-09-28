@@ -1,5 +1,6 @@
 import com.android.build.api.artifact.SingleArtifact
 import java.net.URI
+import java.util.zip.ZipFile
 
 plugins {
     id("com.android.application")
@@ -139,14 +140,67 @@ val generateSohOtr by tasks.registering(Exec::class) {
     outputs.upToDateWhen { false }
 }
 
+val bundleRom: String? = providers.gradleProperty("bundleRom").orNull
+val bundleMqRom: String? = providers.gradleProperty("bundleMqRom").orNull
+val bundleMods: String? = providers.gradleProperty("bundleMods").orNull
+val bundledRoms: Map<String, String?> = mapOf("oot.o2r" to bundleRom, "oot-mq.o2r" to bundleMqRom)
+
+fun portVersionMajor(archive: File): Int? {
+    ZipFile(archive).use { zip ->
+        val entry = zip.getEntry("portVersion") ?: return null
+        val bytes = zip.getInputStream(entry).use { it.readBytes() }
+        if (bytes.size < 3) return null
+        val hi = bytes[if (bytes[0].toInt() == 1) 1 else 2].toInt() and 0xff
+        val lo = bytes[if (bytes[0].toInt() == 1) 2 else 1].toInt() and 0xff
+        return (hi shl 8) or lo
+    }
+}
+
 val stageSohAssets by tasks.registering(Copy::class) {
     dependsOn(generateSohOtr)
     into(stagedAssets)
     from(hostSohO2r)
     from(repoRoot.resolve("soh/assets/yml")) { into("assets") }
+    for ((name, path) in bundledRoms) {
+        if (path != null) {
+            from(file(path)) { rename { name } }
+        }
+    }
+    if (bundleMods != null) {
+        from(file(bundleMods)) {
+            into("mods")
+            include("**/*.o2r")
+        }
+    }
+    inputs.property("bundle", listOf(bundleRom, bundleMqRom, bundleMods).joinToString(","))
     doFirst {
         if (!hostSohO2r.exists() || hostSohO2r.length() == 0L) {
             throw GradleException("GenerateSohOtr left no soh.o2r at ${hostSohO2r.path}")
+        }
+        for (name in bundledRoms.keys) {
+            stagedAssets.resolve(name).delete()
+        }
+        stagedAssets.resolve("mods").deleteRecursively()
+        val major = sohVersion.substringBefore(".").toInt()
+        for ((name, path) in bundledRoms) {
+            if (path == null) continue
+            val archive = file(path)
+            if (!archive.isFile) {
+                throw GradleException("No ROM archive at $path")
+            }
+            val found = portVersionMajor(archive)
+            if (found != major) {
+                throw GradleException(
+                    "$path has port version major $found, this build is $sohVersion. " +
+                        "Extract $name with the in-app extractor of this version."
+                )
+            }
+        }
+        if (bundledRoms.values.any { it != null } || bundleMods != null) {
+            logger.warn(
+                "This APK carries ROM data. Give it only to the known testers. " +
+                    "Never release it and never use it to test."
+            )
         }
     }
 }

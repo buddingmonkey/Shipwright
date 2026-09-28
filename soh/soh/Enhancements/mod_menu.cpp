@@ -209,6 +209,25 @@ bool IsOotrsExtension(std::string extension) {
     return StringHelper::IEquals(extension, ".ootrs");
 }
 
+std::vector<std::filesystem::path> GetModsPaths() {
+    std::vector<std::filesystem::path> paths;
+    for (const std::string& candidate : { Ship::Context::GetPathRelativeToAppDirectory("mods", appShortName),
+                                          Ship::Context::GetPathRelativeToAppBundle("mods") }) {
+        std::error_code error;
+        if (!std::filesystem::is_directory(candidate, error)) {
+            continue;
+        }
+        std::filesystem::path path = std::filesystem::weakly_canonical(candidate, error);
+        if (std::find(paths.begin(), paths.end(), path) == paths.end()) {
+            paths.push_back(path);
+        }
+    }
+    if (paths.empty() && std::filesystem::is_directory("./mods")) {
+        paths.push_back("./mods");
+    }
+    return paths;
+}
+
 void UpdateModFiles(bool init = false, bool reset = false) {
     if (init || reset) {
         enabledModFiles.clear();
@@ -219,12 +238,12 @@ void UpdateModFiles(bool init = false, bool reset = false) {
     unsupportedFiles.clear();
     filePaths.clear();
     bool changed = false;
-    std::string modsPath = Ship::Context::LocateFileAcrossAppDirs("mods", appShortName);
     std::map<std::string, std::string> tempMods;
     std::vector<std::filesystem::path> ootrsFiles;
-    if (modsPath.length() > 0 && std::filesystem::exists(modsPath)) {
+    std::vector<std::filesystem::path> modsPaths = GetModsPaths();
+    if (!modsPaths.empty()) {
         std::vector<std::filesystem::path> enabledFiles;
-        if (std::filesystem::is_directory(modsPath)) {
+        for (const std::filesystem::path& modsPath : modsPaths) {
             for (const std::filesystem::directory_entry& p : std::filesystem::recursive_directory_iterator(
                      modsPath, std::filesystem::directory_options::follow_directory_symlink)) {
                 if (p.is_directory()) {
