@@ -157,6 +157,9 @@ void Menu::UpdateWindowBackendObjects() {
         if (auto it = windowBackendsMap.find(windowBackend); it != windowBackendsMap.end()) {
             availableWindowBackendsMap[windowBackend] = it->second;
         }
+        if (windowBackend == Fast::WindowBackend::FAST3D_OPENXR_OPENGL && !SoH::IsHeadsetWindow()) {
+            availableWindowBackendsMap[windowBackend] = windowBackendsMap.at(Fast::WindowBackend::FAST3D_SDL_OPENGL);
+        }
     }
 }
 
