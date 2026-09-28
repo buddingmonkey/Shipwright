@@ -103,6 +103,73 @@ void Warp(WarpPoint& warpPoint) {
 
 static std::string warpNameInput = "";
 
+#ifdef ENABLE_DEBUG_TOOLS
+static const s32 sOverworldDestinations[] = {
+    ENTR_LINKS_HOUSE_CHILD_SPAWN,
+    ENTR_KOKIRI_FOREST_OUTSIDE_LINKS_HOUSE,
+    ENTR_LOST_WOODS_SOUTH_EXIT,
+    ENTR_SACRED_FOREST_MEADOW_SOUTH_EXIT,
+    ENTR_HYRULE_FIELD_PAST_BRIDGE_SPAWN,
+    ENTR_LON_LON_RANCH_ENTRANCE,
+    ENTR_MARKET_ENTRANCE_NORTH_EXIT,
+    ENTR_MARKET_SOUTH_EXIT,
+    ENTR_BACK_ALLEY_DAY_OUTSIDE_BOMBCHU_SHOP,
+    ENTR_TEMPLE_OF_TIME_EXTERIOR_DAY_OUTSIDE_TEMPLE,
+    ENTR_TEMPLE_OF_TIME_ENTRANCE,
+    ENTR_CASTLE_GROUNDS_SOUTH_EXIT,
+    ENTR_KAKARIKO_VILLAGE_FRONT_GATE,
+    ENTR_GRAVEYARD_ENTRANCE,
+    ENTR_DEATH_MOUNTAIN_TRAIL_BOTTOM_EXIT,
+    ENTR_GORON_CITY_UPPER_EXIT,
+    ENTR_DEATH_MOUNTAIN_CRATER_UPPER_EXIT,
+    ENTR_ZORAS_RIVER_WEST_EXIT,
+    ENTR_ZORAS_DOMAIN_ENTRANCE,
+    ENTR_ZORAS_FOUNTAIN_TUNNEL_EXIT,
+    ENTR_LAKE_HYLIA_NORTH_EXIT,
+    ENTR_GERUDO_VALLEY_EAST_EXIT,
+    ENTR_GERUDOS_FORTRESS_EAST_EXIT,
+    ENTR_HAUNTED_WASTELAND_EAST_EXIT,
+    ENTR_DESERT_COLOSSUS_EAST_EXIT,
+};
+
+static const s32 sDungeonDestinations[] = {
+    ENTR_DEKU_TREE_ENTRANCE,
+    ENTR_DODONGOS_CAVERN_ENTRANCE,
+    ENTR_JABU_JABU_ENTRANCE,
+    ENTR_FOREST_TEMPLE_ENTRANCE,
+    ENTR_FIRE_TEMPLE_ENTRANCE,
+    ENTR_WATER_TEMPLE_ENTRANCE,
+    ENTR_SHADOW_TEMPLE_ENTRANCE,
+    ENTR_SPIRIT_TEMPLE_ENTRANCE,
+    ENTR_BOTTOM_OF_THE_WELL_ENTRANCE,
+    ENTR_ICE_CAVERN_ENTRANCE,
+    ENTR_GERUDO_TRAINING_GROUND_ENTRANCE,
+    ENTR_INSIDE_GANONS_CASTLE_ENTRANCE,
+};
+
+template <size_t N> static void DestinationList(const char* title, const s32 (&entrances)[N]) {
+    ImGui::SeparatorText(title);
+    for (s32 entrance : entrances) {
+        ImGui::PushID(entrance);
+        if (gPlayState == NULL) {
+            ImGui::BeginDisabled();
+        }
+        if (UIWidgets::Button(ICON_FA_PLANE, { .size = UIWidgets::Sizes::Inline })) {
+            gPlayState->nextEntranceIndex = entrance;
+            gPlayState->transitionTrigger = TRANS_TRIGGER_START;
+            gPlayState->transitionType = TRANS_TYPE_INSTANT;
+        }
+        if (gPlayState == NULL) {
+            ImGui::EndDisabled();
+        }
+        ImGui::SameLine();
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("%s", SohUtils::GetSceneName(gEntranceTable[entrance].scene).c_str());
+        ImGui::PopID();
+    }
+}
+#endif
+
 void WarpPointsWidget(WidgetInfo& info) {
     ImGui::SeparatorText("Warp Points");
     if (gPlayState != NULL && GET_PLAYER(gPlayState) != NULL) {
@@ -179,6 +246,10 @@ void WarpPointsWidget(WidgetInfo& info) {
 
         ++it;
     }
+#ifdef ENABLE_DEBUG_TOOLS
+    DestinationList("Overworld", sOverworldDestinations);
+    DestinationList("Dungeons", sDungeonDestinations);
+#endif
 }
 
 void RegisterWarping() {
