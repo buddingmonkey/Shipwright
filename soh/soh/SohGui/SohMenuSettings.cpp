@@ -346,10 +346,12 @@ void SohMenu::AddMenuSettings() {
     path.sidebarName = "Graphics";
     AddSidebarEntry("Settings", "Graphics", 3);
     AddWidget(path, "Graphics Options", WIDGET_SEPARATOR_TEXT);
+#ifndef SOH_MOBILE
     AddWidget(path, "Toggle Fullscreen", WIDGET_BUTTON)
         .RaceDisable(false)
         .Callback([](WidgetInfo& info) { Ship::Context::GetRawInstance()->GetWindow()->ToggleFullscreen(); })
         .Options(ButtonOptions().Tooltip("Toggles Fullscreen On/Off."));
+#endif
     AddWidget(path, "Internal Resolution", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_INTERNAL_RESOLUTION)
         .RaceDisable(false)

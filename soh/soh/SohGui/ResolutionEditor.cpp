@@ -403,7 +403,12 @@ void RegisterResolutionWidgets() {
     //  Activator
     mSohMenu->AddWidget(path, "Enable advanced settings.", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_PREFIX_ADVANCED_RESOLUTION ".Enabled")
-        .RaceDisable(false);
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) {
+            if (mSohMenu->GetDisabledMap().at(DISABLE_FOR_HEADSET).active) {
+                info.activeDisables.push_back(DISABLE_FOR_HEADSET);
+            }
+        });
     // Error/Warning display
     mSohMenu
         ->AddWidget(path, ICON_FA_EXCLAMATION_TRIANGLE " Significant frame rate (FPS) drops may be occurring.",
