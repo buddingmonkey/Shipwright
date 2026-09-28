@@ -361,6 +361,26 @@ static void ParkWhileOffScreen() {
         SDL_Delay(50);
     }
 }
+
+extern "C" void SoH_SetAppOnScreen(int onScreen) {
+    if ((onScreen != 0) == sAppOnScreen) {
+        return;
+    }
+    auto audio = Ship::Context::GetRawInstance() ? Ship::Context::GetRawInstance()->GetAudio() : nullptr;
+    if (onScreen != 0) {
+        SPDLOG_INFO("lifecycle: did-become-active");
+        if (audio != nullptr) {
+            audio->ResumePlayback();
+        }
+        sAppOnScreen = true;
+    } else {
+        SPDLOG_INFO("lifecycle: did-enter-background");
+        if (audio != nullptr) {
+            audio->SuspendPlayback();
+        }
+        sAppOnScreen = false;
+    }
+}
 #endif
 
 static spdlog::level::level_enum SohLogLevel() {

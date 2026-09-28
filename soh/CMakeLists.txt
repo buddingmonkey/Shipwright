@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 
-if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|visionOS")
     enable_language(OBJCXX)
     set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -fobjc-arc")
     set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
@@ -155,7 +155,7 @@ endif()
 # handle speechsynthesizer removals
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/Darwin")
-elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|visionOS")
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/SAPI")
 else()
     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/(Darwin|SAPI)")
@@ -225,6 +225,14 @@ set(ALL_FILES
     ${src__}
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    list(APPEND ALL_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/visionos/SohVolumeApp.swift
+        ${CMAKE_CURRENT_SOURCE_DIR}/visionos/SohVolumeBridge.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/visionos/SohVolumeBridge.mm
+    )
+endif()
+
 ################################################################################
 # Target
 ################################################################################
@@ -272,10 +280,21 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_target_properties(${PROJECT_NAME} PROPERTIES
     OUTPUT_NAME "soh.elf"
     )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in ${CMAKE_BINARY_DIR}/ios/Info.plist @ONLY)
-    target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets)
-    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets
+elseif(SOH_APPLE_MOBILE)
+    if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+        set(SOH_APPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/visionos)
+        target_sources(${PROJECT_NAME} PRIVATE ${SOH_APPLE_DIR}/GameScreen.usda)
+        set_source_files_properties(${SOH_APPLE_DIR}/GameScreen.usda PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER "${SOH_APPLE_DIR}/SohVolumeBridge.h"
+        )
+        target_compile_definitions(${PROJECT_NAME} PRIVATE SOH_VISIONOS)
+    else()
+        set(SOH_APPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ios)
+    endif()
+    configure_file(${SOH_APPLE_DIR}/Info.plist.in ${CMAKE_BINARY_DIR}/ios/Info.plist @ONLY)
+    target_sources(${PROJECT_NAME} PRIVATE ${SOH_APPLE_DIR}/Assets.xcassets)
+    set_source_files_properties(${SOH_APPLE_DIR}/Assets.xcassets
         PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
@@ -346,7 +365,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(dr_libs)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(NOT SOH_APPLE_MOBILE)
     find_package(SDL2)
     set(SDL2-INCLUDE ${SDL2_INCLUDE_DIRS})
 
@@ -617,16 +636,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
         endif()
 
         target_compile_options(${PROJECT_NAME} PRIVATE
-            -Wall -Wextra -Wno-error
-            -Wformat-security
-            -Wno-unused-parameter
-            -Wno-unused-function
-            -Wno-unused-variable
-            -Wno-missing-field-initializers
-            -Wno-parentheses
-            -Wno-narrowing
-            -Wno-missing-braces
-            -Wno-unknown-pragmas # #pragma region is an editor folding marker, GCC doesn't know it
+            "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wall;-Wextra;-Wno-error;-Wformat-security;-Wno-unused-parameter;-Wno-unused-function;-Wno-unused-variable;-Wno-missing-field-initializers;-Wno-parentheses;-Wno-narrowing;-Wno-missing-braces;-Wno-unknown-pragmas;-pthread>"
+            ${CPU_OPTION}
             $<$<COMPILE_LANGUAGE:C>:
                 -Werror-implicit-function-declaration
                 -Wno-implicit-int
@@ -635,14 +646,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
             >
             $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
             $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-enum-enum-conversion>
-            -pthread
-        ${CPU_OPTION}
         )
 
         target_link_options(${PROJECT_NAME} PRIVATE
-            -pthread
+            $<$<NOT:$<PLATFORM_ID:visionOS>>:-pthread>
                 #-fsanitize=address
-            $<$<NOT:$<PLATFORM_ID:iOS>>:-Wl,-export-dynamic>
+            $<$<NOT:$<PLATFORM_ID:iOS,visionOS>>:-Wl,-export-dynamic>
         )
     endif()
 endif()
@@ -812,7 +821,11 @@ elseif(SOH_MOBILE)
             set(SOH_SDL2_TARGET SDL2::SDL2)
         endif()
         set(ADDITIONAL_LIBRARY_DEPENDENCIES "")
-        foreach(framework UIKit GameController CoreHaptics CoreMotion CoreGraphics AVFoundation)
+        set(SOH_APPLE_FRAMEWORKS UIKit GameController CoreHaptics CoreMotion CoreGraphics AVFoundation)
+        if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+            list(APPEND SOH_APPLE_FRAMEWORKS ARKit Metal)
+        endif()
+        foreach(framework ${SOH_APPLE_FRAMEWORKS})
             find_library(IOS_FW_${framework} ${framework} REQUIRED)
             list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES ${IOS_FW_${framework}})
         endforeach()
@@ -889,7 +902,7 @@ if(USE_ASAN)
 endif()
 
 
-if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|NintendoSwitch|CafeOS|iOS")
+if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|NintendoSwitch|CafeOS|iOS|visionOS")
 INSTALL(TARGETS soh DESTINATION . COMPONENT ship)
 endif()
 
@@ -906,7 +919,7 @@ configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/macosx/Info.plist.in ${CMAKE_BINARY_
 INSTALL(TARGETS soh DESTINATION ../MacOS COMPONENT ship)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION ../MacOS COMPONENT ship)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/soh/soh.o2r DESTINATION ../Resources COMPONENT ship)
-elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "NintendoSwitch|CafeOS|iOS")
+elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "NintendoSwitch|CafeOS|iOS|visionOS")
 INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION . COMPONENT ship)
 endif()
 

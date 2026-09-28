@@ -9,6 +9,8 @@ void SohStatsWindow::DrawElement() {
 
 #if defined(_WIN32)
     ImGui::Text("Platform: Windows");
+#elif defined(SOH_VISIONOS)
+    ImGui::Text("Platform: visionOS");
 #elif defined(__IOS__)
     ImGui::Text("Platform: iOS");
 #elif defined(__APPLE__)
