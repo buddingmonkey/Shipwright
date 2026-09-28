@@ -418,10 +418,6 @@ static bool EntranceHandler(std::shared_ptr<Ship::Console> Console, const std::v
     }
 
     gPlayState->nextEntranceIndex = entrance;
-    gSaveContext.cutsceneIndex = 0;
-    gSaveContext.nextCutsceneIndex = 0xFFEF;
-    gPlayState->csCtx.state = CS_STATE_IDLE;
-    Message_CloseTextbox(gPlayState);
     gPlayState->transitionTrigger = TRANS_TRIGGER_START;
     gPlayState->transitionType = TRANS_TYPE_INSTANT;
     gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
@@ -1544,6 +1540,10 @@ static void DebugWarpPoll() {
         }
     } catch (...) { return; }
     gPlayState->nextEntranceIndex = entrance;
+    gSaveContext.cutsceneIndex = 0;
+    gSaveContext.nextCutsceneIndex = 0xFFEF;
+    gPlayState->csCtx.state = CS_STATE_IDLE;
+    Message_CloseTextbox(gPlayState);
     gPlayState->transitionTrigger = TRANS_TRIGGER_START;
     gPlayState->transitionType = transition;
     gSaveContext.nextTransitionType = transition;
