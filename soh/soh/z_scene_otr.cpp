@@ -347,7 +347,9 @@ bool Scene_CommandAlternateHeaderList(PlayState* play, SOH::ISceneCommand* cmd) 
 
     if (gSaveContext.sceneLayer != 0) {
         SOH::Scene* desiredHeader =
-            std::static_pointer_cast<SOH::Scene>(cmdHeaders->headers[gSaveContext.sceneLayer - 1]).get();
+            gSaveContext.sceneLayer - 1 < (s32)cmdHeaders->headers.size()
+                ? std::static_pointer_cast<SOH::Scene>(cmdHeaders->headers[gSaveContext.sceneLayer - 1]).get()
+                : nullptr;
 
         if (desiredHeader != nullptr) {
             OTRScene_ExecuteCommands(play, desiredHeader);
@@ -358,7 +360,9 @@ bool Scene_CommandAlternateHeaderList(PlayState* play, SOH::ISceneCommand* cmd) 
 
             if (gSaveContext.sceneLayer == 3) {
                 SOH::Scene* desiredHeader =
-                    std::static_pointer_cast<SOH::Scene>(cmdHeaders->headers[gSaveContext.sceneLayer - 2]).get();
+                    gSaveContext.sceneLayer - 2 < (s32)cmdHeaders->headers.size()
+                        ? std::static_pointer_cast<SOH::Scene>(cmdHeaders->headers[gSaveContext.sceneLayer - 2]).get()
+                        : nullptr;
 
                 // "Using adult day data there!"
                 osSyncPrintf("\nそこで、大人の昼データを使用するでええっす！！");
