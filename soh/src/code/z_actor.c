@@ -442,6 +442,64 @@ void Attention_Init(TargetContext* targetCtx, Actor* actor, PlayState* play) {
     Attention_InitReticle(targetCtx, actor->category, play);
 }
 
+static void Attention_UnprojectReticle(MtxF* invViewProj, f32 ndcX, f32 ndcY, f32 clipZ, f32 clipW, Vec3f* dest) {
+    f32 cx = ndcX * clipW;
+    f32 cy = ndcY * clipW;
+    f32 x = invViewProj->xx * cx + invViewProj->xy * cy + invViewProj->xz * clipZ + invViewProj->xw * clipW;
+    f32 y = invViewProj->yx * cx + invViewProj->yy * cy + invViewProj->yz * clipZ + invViewProj->yw * clipW;
+    f32 z = invViewProj->zx * cx + invViewProj->zy * cy + invViewProj->zz * clipZ + invViewProj->zw * clipW;
+    f32 w = invViewProj->wx * cx + invViewProj->wy * cy + invViewProj->wz * clipZ + invViewProj->ww * clipW;
+
+    if (w == 0.0f) {
+        w = 1.0f;
+    }
+    dest->x = x / w;
+    dest->y = y / w;
+    dest->z = z / w;
+}
+
+static s32 Attention_ReticleSpace(PlayState* play, f32 clipZ, f32 clipW, MtxF* dest) {
+    MtxF invViewProj;
+    Vec3f origin;
+    Vec3f unitX;
+    Vec3f unitY;
+    Vec3f forward;
+    f32 length;
+
+    if (SkinMatrix_Invert(&play->viewProjectionMtxF, &invViewProj) != 0) {
+        return false;
+    }
+    Attention_UnprojectReticle(&invViewProj, 0.0f, 0.0f, clipZ, clipW, &origin);
+    Attention_UnprojectReticle(&invViewProj, 1.0f / 160.0f, 0.0f, clipZ, clipW, &unitX);
+    Attention_UnprojectReticle(&invViewProj, 0.0f, 1.0f / 120.0f, clipZ, clipW, &unitY);
+    Math_Vec3f_Diff(&unitX, &origin, &unitX);
+    Math_Vec3f_Diff(&unitY, &origin, &unitY);
+    Math_Vec3f_Diff(&origin, &play->view.eye, &forward);
+    length = Math3D_Vec3fMagnitude(&forward);
+    if (length <= 0.0f) {
+        return false;
+    }
+    Math_Vec3f_Scale(&forward, Math3D_Vec3fMagnitude(&unitX) / length);
+
+    dest->xx = unitX.x;
+    dest->yx = unitX.y;
+    dest->zx = unitX.z;
+    dest->wx = 0.0f;
+    dest->xy = unitY.x;
+    dest->yy = unitY.y;
+    dest->zy = unitY.z;
+    dest->wy = 0.0f;
+    dest->xz = forward.x;
+    dest->yz = forward.y;
+    dest->zz = forward.z;
+    dest->wz = 0.0f;
+    dest->xw = origin.x;
+    dest->yw = origin.y;
+    dest->zw = origin.z;
+    dest->ww = 1.0f;
+    return true;
+}
+
 void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
     Actor* actor = targetCtx->targetedActor;
 
@@ -485,6 +543,9 @@ void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
         }
 
         Actor_ProjectPos(play, &targetCtx->targetCenterPos, &spBC, &spB4);
+        MtxF reticleSpace;
+        s32 reticleInWorld = XrWindow_IsHeadset() && Attention_ReticleSpace(play, spBC.z, 1.0f / spB4, &reticleSpace);
+        Gfx** reticleDisp = reticleInWorld ? &POLY_XLU_DISP : &OVERLAY_DISP;
 
         spBC.x = (160 * (spBC.x * spB4)) * var1;
         spBC.x = CLAMP(spBC.x, -320.0f, 320.0f);
@@ -502,7 +563,7 @@ void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
         Attention_SetReticlePos(targetCtx, targetCtx->unk_4C, spBC.x, spBC.y, spBC.z);
 
         if ((!(player->stateFlags1 & PLAYER_STATE1_TALKING)) || (actor != player->focusActor)) {
-            OVERLAY_DISP = Gfx_SetupDL(OVERLAY_DISP, 0x39);
+            *reticleDisp = Gfx_SetupDL(*reticleDisp, 0x39);
 
             for (spB0 = 0, spAC = targetCtx->unk_4C; spB0 < spB8; spB0++, spAC = (spAC + 1) % 3) {
                 entry = &targetCtx->arr_50[spAC];
@@ -514,10 +575,15 @@ void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
                         var2 = ((entry->unk_0C - 120.0f) * 0.001f) + 0.15f;
                     }
 
-                    Matrix_Translate(entry->pos.x, entry->pos.y, 0.0f, MTXMODE_NEW);
+                    if (reticleInWorld) {
+                        Matrix_Put(&reticleSpace);
+                        Matrix_Translate(entry->pos.x, entry->pos.y, 0.0f, MTXMODE_APPLY);
+                    } else {
+                        Matrix_Translate(entry->pos.x, entry->pos.y, 0.0f, MTXMODE_NEW);
+                    }
                     Matrix_Scale(var2, 0.15f, 1.0f, MTXMODE_APPLY);
 
-                    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, entry->color.r, entry->color.g, entry->color.b, (u8)spCE);
+                    gDPSetPrimColor((*reticleDisp)++, 0, 0, entry->color.r, entry->color.g, entry->color.b, (u8)spCE);
 
                     Matrix_RotateZ((targetCtx->unk_4B & 0x7F) * (M_PI / 64), MTXMODE_APPLY);
 
@@ -525,8 +591,8 @@ void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
                         Matrix_RotateZ(M_PI / 2, MTXMODE_APPLY);
                         Matrix_Push();
                         Matrix_Translate(entry->unk_0C, entry->unk_0C, 0.0f, MTXMODE_APPLY);
-                        gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_MODELVIEW | G_MTX_LOAD);
-                        gSPDisplayList(OVERLAY_DISP++, gZTargetLockOnTriangleDL);
+                        gSPMatrix((*reticleDisp)++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_MODELVIEW | G_MTX_LOAD);
+                        gSPDisplayList((*reticleDisp)++, gZTargetLockOnTriangleDL);
                         Matrix_Pop();
                     }
                 }
