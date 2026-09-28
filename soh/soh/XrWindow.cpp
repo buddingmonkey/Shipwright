@@ -138,7 +138,7 @@ void XrWindow_Sync(Fast::Fast3dWindow* wnd) {
     static float pushedScale = 0.0f;
     const bool rangeMoved = SyncSetting(CVAR_SETTING("XrWindowRange"), 0.5f, 4.0f, 1.3f, pushedRange,
                                         Fast::GetXrWindowDistance(), Fast::SetXrWindowDistance);
-    const bool scaleMoved = SyncSetting(CVAR_SETTING("XrWindowScale"), 0.5f, 8.0f, 2.6f, pushedScale,
+    const bool scaleMoved = SyncSetting(CVAR_SETTING("XrWindowScale"), 0.5f, 8.0f, 3.9f, pushedScale,
                                         Fast::GetXrWindowScale(), Fast::SetXrWindowScale);
 
     static bool wasMoving = false;

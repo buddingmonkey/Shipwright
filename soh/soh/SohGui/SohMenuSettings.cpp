@@ -478,7 +478,7 @@ void SohMenu::AddMenuSettings() {
                               "set the same size.")
                      .Min(0.5f)
                      .Max(8.0f)
-                     .DefaultValue(2.6f)
+                     .DefaultValue(3.9f)
                      .Format("%.2f"));
     AddWidget(path, "Edge Float", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("XrEdgeFloat"))
