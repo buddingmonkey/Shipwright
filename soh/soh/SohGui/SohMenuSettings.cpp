@@ -432,7 +432,6 @@ void SohMenu::AddMenuSettings() {
                      .Max(4.0f)
                      .DefaultValue(2.0f)
                      .Format("%.2f m"));
-#ifdef ENABLE_OPENXR
     AddWidget(path, "Depth Limit", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("XrDepthLimit"))
         .RaceDisable(false)
@@ -457,6 +456,7 @@ void SohMenu::AddMenuSettings() {
             "goes near a wall or into grass, the rest of the world moves back. With this "
             "setting, the world becomes less deep at that time instead, and Link and the other "
             "things that you look at stay at the same depth."));
+#ifdef ENABLE_OPENXR
     AddWidget(path, "Window Range", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("XrWindowRange"))
         .RaceDisable(false)
