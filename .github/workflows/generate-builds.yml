@@ -140,9 +140,10 @@ jobs:
     - name: Remove distro tinyxml2
       run: sudo apt-get remove libtinyxml2-dev
     - uses: ./.github/actions/install-tinyxml2
-    - name: Install libzip without crypto
+    - name: Install libzip without crypto, with zstd
       run: |
         sudo apt-get remove -y libzip-dev
+        sudo apt-get install -y libzstd-dev
         if [ ! -d "deps/libzip-1.10.1" ]; then
           wget https://github.com/nih-at/libzip/releases/download/v1.10.1/libzip-1.10.1.tar.gz
           tar -xzf libzip-1.10.1.tar.gz -C deps
