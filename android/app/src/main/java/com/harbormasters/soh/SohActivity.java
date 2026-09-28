@@ -45,6 +45,11 @@ public class SohActivity extends SDLActivity {
         "assets",
         "gamecontrollerdb.txt",
     };
+    private static final String[] BUNDLED = {
+        "oot.o2r",
+        "oot-mq.o2r",
+        "mods",
+    };
     private static final String INTERNAL_ROOT = "assets";
     private static final int REQUEST_PICK_ROM = 1;
     private static final String IMPORT_DIR = "import";
@@ -320,7 +325,15 @@ public class SohActivity extends SDLActivity {
         return true;
     }
 
+    private static List<String> unpackedRoots() {
+        List<String> roots = new ArrayList<>();
+        Collections.addAll(roots, SHIPPED);
+        Collections.addAll(roots, BUNDLED);
+        return roots;
+    }
+
     private String shippedFingerprint() throws IOException {
+        List<String> roots = unpackedRoots();
         List<String> entries = new ArrayList<>();
         try (ZipFile apk = new ZipFile(getApplicationInfo().sourceDir)) {
             for (Enumeration<? extends ZipEntry> e = apk.entries(); e.hasMoreElements();) {
@@ -328,7 +341,7 @@ public class SohActivity extends SDLActivity {
                 if (entry.isDirectory()) {
                     continue;
                 }
-                for (String root : SHIPPED) {
+                for (String root : roots) {
                     String prefix = "assets/" + root;
                     if (entry.getName().equals(prefix) || entry.getName().startsWith(prefix + "/")) {
                         entries.add(entry.getName() + ":" + entry.getSize() + ":" + entry.getCrc());
@@ -346,6 +359,7 @@ public class SohActivity extends SDLActivity {
     }
 
     private void copyShipped(File media) throws IOException {
+        List<String> roots = unpackedRoots();
         Set<File> made = new HashSet<>();
         byte[] buffer = new byte[64 * 1024];
         try (ZipFile apk = new ZipFile(getApplicationInfo().sourceDir)) {
@@ -355,7 +369,7 @@ public class SohActivity extends SDLActivity {
                     continue;
                 }
                 String name = entry.getName().substring("assets/".length());
-                for (String root : SHIPPED) {
+                for (String root : roots) {
                     if (!name.equals(root) && !name.startsWith(root + "/")) {
                         continue;
                     }

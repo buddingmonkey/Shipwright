@@ -662,7 +662,7 @@ add_custom_command(
     COMMENT "Copying asset ymls..."
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different ${CMAKE_SOURCE_DIR}/soh/assets/yml $<TARGET_FILE_DIR:soh>/assets
 )
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(SOH_APPLE_MOBILE)
     add_custom_command(
         TARGET ${PROJECT_NAME}
         POST_BUILD
@@ -670,6 +670,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
                 -DBUNDLE=$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>
                 -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
                 -DBINARY_DIR=${CMAKE_BINARY_DIR}
+                -DVERSION_MAJOR=${Ship_VERSION_MAJOR}
+                "-DBUNDLE_ROM=${SOH_BUNDLE_ROM_PATH}"
+                "-DBUNDLE_MQ_ROM=${SOH_BUNDLE_MQ_ROM_PATH}"
+                "-DBUNDLE_MODS=${SOH_BUNDLE_MODS_PATH}"
                 -P ${CMAKE_SOURCE_DIR}/CMake/ios-bundle-resources.cmake
         COMMENT "Copying SoH resources into the app bundle"
     )
