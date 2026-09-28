@@ -11,6 +11,7 @@
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/OTRGlobals.h"
 #include "soh/XrWindow.h"
+#include "soh/ScenePrefetch.h"
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/SaveManager.h"
 #include "soh/framebuffer_effects.h"
@@ -653,6 +654,8 @@ void Play_Init(GameState* thisx) {
 
     // nextEntranceIndex was not initialized, so the previous value was carried over during soft resets.
     gPlayState->nextEntranceIndex = gSaveContext.entranceIndex;
+
+    ScenePrefetch_Start(play);
 }
 
 void Play_Update(PlayState* play) {
@@ -1687,6 +1690,15 @@ time_t Play_GetRealTime() {
 
 void Play_Main(GameState* thisx) {
     PlayState* play = (PlayState*)thisx;
+
+    if (ScenePrefetch_Hold()) {
+        FrameInterpolation_StartRecord();
+        OPEN_DISPS(play->state.gfxCtx);
+        Gfx_SetupFrame(play->state.gfxCtx, 0, 0, 0);
+        CLOSE_DISPS(play->state.gfxCtx);
+        FrameInterpolation_StopRecord();
+        return;
+    }
 
     if (play->envCtx.unk_EE[2] == 0 && CVarGetInteger(CVAR_GENERAL("LetItSnow"), 0)) {
         play->envCtx.unk_EE[3] = 64;

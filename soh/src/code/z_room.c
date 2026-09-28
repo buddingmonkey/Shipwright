@@ -12,6 +12,7 @@
 #include <libultraship/bridge/resourcebridge.h>
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
+#include "soh/ScenePrefetch.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 void func_80095AB4(PlayState* play, Room* room, u32 flags);
@@ -584,6 +585,7 @@ u32 func_80096FE8(PlayState* play, RoomContext* roomCtx) {
 s32 Room_RequestNewRoom(PlayState* play, RoomContext* roomCtx, s32 roomNum) {
     size_t size;
 
+    ScenePrefetch_Room(roomNum);
     return OTRRoom_RequestNewRoom(play, roomCtx, roomNum);
 
     if (roomCtx->status == 0) {
