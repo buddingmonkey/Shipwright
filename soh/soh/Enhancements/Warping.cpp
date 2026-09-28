@@ -103,6 +103,7 @@ void Warp(WarpPoint& warpPoint) {
 
 static std::string warpNameInput = "";
 
+#ifdef ENABLE_DEBUG_TOOLS
 static const s32 sOverworldDestinations[] = {
     ENTR_LINKS_HOUSE_CHILD_SPAWN,
     ENTR_KOKIRI_FOREST_OUTSIDE_LINKS_HOUSE,
@@ -167,6 +168,7 @@ template <size_t N> static void DestinationList(const char* title, const s32 (&e
         ImGui::PopID();
     }
 }
+#endif
 
 void WarpPointsWidget(WidgetInfo& info) {
     ImGui::SeparatorText("Warp Points");
@@ -244,8 +246,10 @@ void WarpPointsWidget(WidgetInfo& info) {
 
         ++it;
     }
+#ifdef ENABLE_DEBUG_TOOLS
     DestinationList("Overworld", sOverworldDestinations);
     DestinationList("Dungeons", sDungeonDestinations);
+#endif
 }
 
 void RegisterWarping() {
