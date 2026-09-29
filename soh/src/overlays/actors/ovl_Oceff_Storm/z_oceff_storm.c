@@ -140,8 +140,9 @@ void OceffStorm_Draw2(Actor* thisx, PlayState* play) {
     gSPDisplayList(POLY_XLU_DISP++, sMaterialDL);
     gSPDisplayList(POLY_XLU_DISP++, Gfx_TwoTexScrollEx(play->state.gfxCtx, 0, scroll * 8, scroll * 4, 64, 64, 1,
                                                        scroll * 4, scroll * 4, 64, 64, 8, 4, 4, 4));
-    gSPWideTextureRectangle(POLY_XLU_DISP++, OTRGetRectDimensionFromLeftEdge(0) << 2, 0,
-                            OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2, 0x03C0, G_TX_RENDERTILE, 0, 0, 0x008C,
+    gSPWideTextureRectangle(POLY_XLU_DISP++, OTRGetRectDimensionFromLeftEdge(0) << 2,
+                            OTRGetRectDimensionFromTopEdge(0) << 2, OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2,
+                            OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT) << 2, G_TX_RENDERTILE, 0, 0, 0x008C,
                             -0x008C);
 
     CLOSE_DISPS(play->state.gfxCtx);

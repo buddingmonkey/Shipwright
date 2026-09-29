@@ -165,6 +165,7 @@ void TransitionCircle_Draw(void* thisx, Gfx** gfxP) {
     gSPMatrix(gfx++, &this->lookAt, G_MTX_PROJECTION | G_MTX_NOPUSH | G_MTX_MUL);
 
     float aspectRatio = OTRGetAspectRatio();
+    aspectRatio = MAX(aspectRatio, (4.0f / 3.0f) * (4.0f / 3.0f) / aspectRatio);
 
     if (scale != 1.0f) {
         guScale(&modelView[0], scale * aspectRatio, scale * aspectRatio, 1.0f);

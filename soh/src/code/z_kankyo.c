@@ -2338,21 +2338,24 @@ u16 previousPatchedSandstormScreenSize = 0;
 
 void Environment_PatchSandstorm(PlayState* play) {
     if (previousPatchedSandstormScreenSize ==
-        ABS(OTRGetRectDimensionFromLeftEdge(0)) + ABS(OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH))) {
+        ABS(OTRGetRectDimensionFromLeftEdge(0)) + ABS(OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH)) +
+            ABS(OTRGetRectDimensionFromTopEdge(0)) + ABS(OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT))) {
         return;
     }
 
     Gfx gfxPatchSandstormRect[] = {
-        gsSPWideTextureRectangle(OTRGetRectDimensionFromLeftEdge(0) << 2, 0,
-                                 OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2, 0x03C0, G_TX_RENDERTILE, 0, 0,
-                                 0x008C, -0x008C),
+        gsSPWideTextureRectangle(OTRGetRectDimensionFromLeftEdge(0) << 2, OTRGetRectDimensionFromTopEdge(0) << 2,
+                                 OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2,
+                                 OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT) << 2, G_TX_RENDERTILE, 0, 0, 0x008C,
+                                 -0x008C),
     };
     ResourceMgr_PatchGfxByName(gFieldSandstormDL, "gfxPatchSandstormRect0", 24, gfxPatchSandstormRect[0]);
     ResourceMgr_PatchGfxByName(gFieldSandstormDL, "gfxPatchSandstormRect1", 25, gfxPatchSandstormRect[1]);
     ResourceMgr_PatchGfxByName(gFieldSandstormDL, "gfxPatchSandstormRect2", 26, gfxPatchSandstormRect[2]);
 
     previousPatchedSandstormScreenSize =
-        ABS(OTRGetRectDimensionFromLeftEdge(0)) + ABS(OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH));
+        ABS(OTRGetRectDimensionFromLeftEdge(0)) + ABS(OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH)) +
+        ABS(OTRGetRectDimensionFromTopEdge(0)) + ABS(OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT));
 }
 
 void Environment_DrawSandstorm(PlayState* play, u8 sandstormState) {
