@@ -284,6 +284,7 @@ static bool sohArchiveVersionMatch = false;
 #ifdef SOH_MOBILE
 static std::atomic<bool> sAppOnScreen{ true };
 static std::atomic<bool> sWindowMinimized{ false };
+static std::atomic<bool> sAppTerminating{ false };
 #ifdef __ANDROID__
 static std::atomic<bool> sBackPressed{ false };
 #endif
@@ -313,7 +314,7 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
             if (audio != nullptr) {
                 audio->ResumePlayback();
             }
-            sAppOnScreen = true;
+            sAppOnScreen = !sAppTerminating;
             break;
         }
         case SDL_APP_LOWMEMORY: {
@@ -343,6 +344,8 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
 #endif
         case SDL_APP_TERMINATING: {
             SPDLOG_CRITICAL("System terminated the app");
+            sAppTerminating = true;
+            sAppOnScreen = false;
             if (auto logger = spdlog::default_logger()) {
                 logger->flush();
             }
