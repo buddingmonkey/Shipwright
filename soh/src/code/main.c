@@ -4,6 +4,7 @@
 #endif
 #ifdef SOH_MOBILE
 #include <SDL_main.h>
+#include <stdlib.h>
 #endif
 
 #include "global.h"
@@ -71,6 +72,9 @@ int main(int argc, char* argv[]) {
     Main(0);
     DeinitOTR();
     Heaps_Free();
+#if defined(__IOS__) && !defined(SOH_VISIONOS)
+    exit(0);
+#endif
     return 0;
 }
 
