@@ -2244,7 +2244,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
     const auto passStart = std::chrono::steady_clock::now();
     for (int i = 0; i < drawCount; i++) {
 #ifdef SOH_MOBILE
-        if (sWindowMinimized) {
+        if (sWindowMinimized || !sAppOnScreen) {
             break;
         }
 #endif
@@ -2394,6 +2394,11 @@ extern "C" uint16_t OTRGetPixelDepth(float x, float y) {
     if (wnd == nullptr) {
         return 0;
     }
+#ifdef SOH_MOBILE
+    if (!sAppOnScreen) {
+        return 0;
+    }
+#endif
 
     return wnd->GetPixelDepth(x, y);
 }
