@@ -35,6 +35,7 @@ private let kHoverStep = Float(0.0001)
         if case .opened = await gOpenSpace?(id: kSpaceId) {
             gSpaceOpen = true
             note("the immersive space is open")
+            SohVolumeRestartTracking()
         } else {
             note("the immersive space did not open")
         }
@@ -44,6 +45,12 @@ private let kHoverStep = Float(0.0001)
         note("the immersive space is given back")
     }
     gSpaceBusy = false
+}
+
+@MainActor private func spaceClosed() {
+    guard gSpaceOpen, !gSpaceBusy else { return }
+    gSpaceOpen = false
+    note("the immersive space was closed by the system; the next pinch or return opens it again")
 }
 
 @MainActor private func leave() {
@@ -324,6 +331,9 @@ private final class VolumeState {
         let u = min(max(local.x / quadSize.x + 0.5, 0.0), 1.0)
         let v = min(max(0.5 - local.y / quadSize.y, 0.0), 1.0)
         let place = SIMD2(u * Float(kEyeWidth), v * Float(kTextureHeight))
+        if pressed, held == nil {
+            Task { await holdSpace(phase == 2) }
+        }
         held = pressed ? place : nil
         SohVolumePoint(place.x, place.y, pressed)
     }
@@ -476,6 +486,7 @@ struct SohVolumeApp: App {
 
         ImmersiveSpace(id: kSpaceId) {
             RealityView { _ in }
+                .onDisappear { spaceClosed() }
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }

@@ -340,6 +340,21 @@ void* SohVolumeTexture(int eye) {
     return Fast::GetVisionOSReadyGameTexture(eye);
 }
 
+void SohVolumeRestartTracking(void) {
+    if (!gVolume.Started || gVolume.Stopped) {
+        return;
+    }
+    if (gVolume.TrackingProvider != nullptr &&
+        ar_data_provider_get_state(gVolume.TrackingProvider) == ar_data_provider_state_running) {
+        return;
+    }
+    if (gVolume.Session != nullptr) {
+        ar_session_stop(gVolume.Session);
+    }
+    StartTracking();
+    Fast::ReportVisionOS("world tracking is started again");
+}
+
 void SohVolumeNoteHoverLayout(int rebuilt) {
 #ifdef ENABLE_DEBUG_TOOLS
     static int sRuns = 0;
