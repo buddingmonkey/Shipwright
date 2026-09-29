@@ -557,6 +557,7 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
 }
 
 [[noreturn]] static void ShutdownAndExit(int code, std::shared_ptr<BS::thread_pool>* threadPool = nullptr) {
+    SPDLOG_INFO("shutdown: a start-up loop ended");
     if (threadPool != nullptr) {
         *threadPool = nullptr;
     }
@@ -1912,9 +1913,16 @@ extern "C" void SaveManager_ThreadPoolWait() {
     SaveManager::Instance->ThreadPoolWait();
 }
 
+extern "C" void SoH_NoteShutdown(const char* step) {
+    SPDLOG_INFO("shutdown: {}", step);
+}
+
 extern "C" void DeinitOTR() {
+    SoH_NoteShutdown("the game loop returned");
     SaveManager_ThreadPoolWait();
+    SoH_NoteShutdown("the save thread pool is idle");
     OTRAudio_Exit();
+    SoH_NoteShutdown("audio is stopped");
     if (CVarGetInteger(CVAR_REMOTE_CROWD_CONTROL("Enabled"), 0)) {
         CrowdControl::Instance->Disable();
     }
@@ -1925,11 +1933,14 @@ extern "C" void DeinitOTR() {
         Anchor::Instance->Disable();
     }
     SDLNet_Quit();
+    SoH_NoteShutdown("network is closed");
 
     // Destroying gui here because we have shared ptrs to LUS objects which output to SPDLOG which is destroyed before
     // these shared ptrs.
     SohGui::Destroy();
     sohFast3dWindow = nullptr;
+
+    SoH_NoteShutdown("the menu is destroyed; the context goes next");
 
     Ship::Context::DestroyInstance();
     OTRGlobals::Instance->context = nullptr;
@@ -2201,7 +2212,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
         const auto now = std::chrono::steady_clock::now();
         const auto gapMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - sLastFrame).count();
         sLastFrame = now;
-        if (gapMs > 80 && gapMs < 2000) {
+        if (gapMs > 80 && gapMs < 2000 && !sAppTerminating) {
             SPDLOG_INFO("slow frame: {} ms between RunCommands", gapMs);
         }
     }

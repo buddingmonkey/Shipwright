@@ -159,6 +159,7 @@ void Main(void* arg) {
         }
     }
 
+    SoH_NoteShutdown("the main loop ended");
     osSyncPrintf("mainproc 後始末\n"); // "Cleanup"
     osDestroyThread(&sGraphThread);
     func_800FBFD8();

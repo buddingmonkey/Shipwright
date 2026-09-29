@@ -94,6 +94,7 @@ float ImGuiDensityScale();
 #ifndef __cplusplus
 void InitOTR(int argc, char* argv[]);
 void DeinitOTR(void);
+void SoH_NoteShutdown(const char* step);
 void OTRMessage_Init();
 void Graph_StartFrame();
 void Graph_ProcessGfxCommands(Gfx* commands);
