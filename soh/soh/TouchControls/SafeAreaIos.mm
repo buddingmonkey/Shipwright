@@ -3,9 +3,18 @@
 #import <UIKit/UIKit.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
+#include <cstring>
 #include <imgui.h>
+#include <spdlog/spdlog.h>
+
+#if defined(__IPHONE_27_1) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_27_1
+#define SOH_RESERVED_REGIONS 1
+#endif
 
 namespace {
+
+constexpr CGFloat kSideCutoutTop = 0.25;
+constexpr CGFloat kSideCutoutBottom = 0.75;
 
 TouchControlsSafeArea sCached = {};
 
@@ -28,8 +37,46 @@ UIView* GameView() {
     return view != nil ? view : uiWindow;
 }
 
-UIEdgeInsets UnusableInsets(UIView* view) {
-    return view.safeAreaInsets;
+void AddKeepOut(TouchControlsSafeArea& area, CGRect rect, CGFloat height) {
+    if (area.keepOutCount >= kTouchControlsMaxKeepOuts || CGRectIsEmpty(rect)) {
+        return;
+    }
+    area.keepOuts[area.keepOutCount++] = { (float)(CGRectGetMinX(rect) / height),
+                                           (float)(CGRectGetMinY(rect) / height),
+                                           (float)(CGRectGetMaxX(rect) / height),
+                                           (float)(CGRectGetMaxY(rect) / height) };
+}
+
+bool AddReservedRegions(TouchControlsSafeArea& area, UIView* view, CGFloat height) {
+#ifdef SOH_RESERVED_REGIONS
+    if (@available(iOS 27.1, *)) {
+        NSArray<UIViewReservedRegion*>* regions =
+            [view reservedRegionsOfKind:UIViewReservedRegionKind.occlusionRegionKind];
+        for (UIViewReservedRegion* region in regions) {
+            if (region.active) {
+                AddKeepOut(area, region.frame, height);
+            }
+        }
+        return regions.count > 0;
+    }
+#endif
+    (void)area;
+    (void)view;
+    (void)height;
+    return false;
+}
+
+void AddSideCutout(TouchControlsSafeArea& area, UIView* view, UIEdgeInsets in, CGFloat height) {
+    const CGFloat width = view.bounds.size.width;
+    bool leftSide = in.left > in.right;
+    if (in.left == in.right) {
+        const UIInterfaceOrientation orientation = view.window.windowScene.effectiveGeometry.interfaceOrientation;
+        leftSide = orientation == UIInterfaceOrientationLandscapeRight;
+    }
+    const CGFloat depth = MAX(in.left, in.right);
+    const CGFloat x = leftSide ? 0.0 : width - depth;
+    AddKeepOut(area, CGRectMake(x, height * kSideCutoutTop, depth, height * (kSideCutoutBottom - kSideCutoutTop)),
+               height);
 }
 
 } // namespace
@@ -39,12 +86,28 @@ TouchControlsSafeArea TouchControls_IosSafeArea() {
         return sCached;
     }
     UIView* view = GameView();
-    const CGFloat height = view.bounds.size.height;
-    if (view == nil || height <= 0.0) {
+    const CGSize size = view.bounds.size;
+    if (view == nil || size.height <= 0.0) {
         return sCached;
     }
-    const UIEdgeInsets in = UnusableInsets(view);
-    sCached = { (float)(in.left / height), (float)(in.top / height), (float)(in.right / height),
-                (float)(in.bottom / height) };
+    const UIEdgeInsets in = view.safeAreaInsets;
+    TouchControlsSafeArea area = {};
+    const bool landscape = size.width > size.height;
+    if (!landscape) {
+        area.top = (float)(in.top / size.height);
+        area.bottom = (float)(in.bottom / size.height);
+    }
+    if (!AddReservedRegions(area, view, size.height) && landscape && MAX(in.left, in.right) > 0.0) {
+        AddSideCutout(area, view, in, size.height);
+    }
+    if (std::memcmp(&area, &sCached, sizeof(area)) != 0) {
+        SPDLOG_INFO("Touch safe area: view {}x{}, insets l{} t{} r{} b{}, {} keep-out(s)", size.width, size.height,
+                    in.left, in.top, in.right, in.bottom, area.keepOutCount);
+        for (int i = 0; i < area.keepOutCount; i++) {
+            const TouchControlsKeepOut& k = area.keepOuts[i];
+            SPDLOG_INFO("Touch keep-out {}: {:.3f},{:.3f} - {:.3f},{:.3f}", i, k.left, k.top, k.right, k.bottom);
+        }
+    }
+    sCached = area;
     return sCached;
 }
