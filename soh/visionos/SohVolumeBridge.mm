@@ -32,6 +32,7 @@ const float kNominalIPD = 0.063f;
 const int kHeadUnreported = -3;
 const int kHeadNoTracking = -2;
 const int kHeadNoQuad = -1;
+const int kSettleUpdates = 45;
 
 struct Sample {
     simd_float3 Head = { 0.0f, 0.0f, kRangeDefault };
@@ -47,6 +48,8 @@ struct VolumeState {
     id<MTLCommandQueue> Queue = nil;
     ar_session_t Session = nullptr;
     ar_world_tracking_provider_t TrackingProvider = nullptr;
+    bool Active = true;
+    int ActiveUpdates = 0;
     ar_device_anchor_t DeviceAnchor = nullptr;
     dispatch_semaphore_t Frame = nullptr;
     std::mutex Mutex;
@@ -257,8 +260,17 @@ void SohVolumeUpdate(SohVolumeFrame frame) {
     sample.HalfHeight = frame.HalfHeight;
     sample.QuadValid = frame.HasQuad;
 
+    if (gVolume.Active && gVolume.ActiveUpdates < kSettleUpdates) {
+        gVolume.ActiveUpdates++;
+        if (gVolume.ActiveUpdates == kSettleUpdates) {
+            SohVolumeRestartTracking();
+        }
+    }
+    const bool tracking = gVolume.TrackingProvider != nullptr &&
+                          ar_data_provider_get_state(gVolume.TrackingProvider) == ar_data_provider_state_running;
+
     int headState;
-    if (gVolume.TrackingProvider == nullptr) {
+    if (!gVolume.Active || gVolume.ActiveUpdates < kSettleUpdates || !tracking) {
         headState = kHeadNoTracking;
     } else if (!frame.HasQuad) {
         headState = kHeadNoQuad;
@@ -326,7 +338,14 @@ void SohVolumeSetScenePhase(int phase) {
         return;
     }
     sPhase = phase;
+    Fast::ReportVisionOSCommits(phase);
     SoH_SetAppOnScreen(phase == 2 ? 1 : 0);
+    gVolume.Active = phase == 2;
+    gVolume.ActiveUpdates = 0;
+    if (!gVolume.Active && gVolume.Session != nullptr && !gVolume.Stopped) {
+        ar_session_stop(gVolume.Session);
+        Fast::ReportVisionOS("world tracking is stopped while the scene is not active");
+    }
     char line[80];
     snprintf(line, sizeof(line), "the scene phase is %d, where 2 is active and 0 is background", phase);
     Fast::ReportVisionOS(line);
@@ -341,7 +360,7 @@ void* SohVolumeTexture(int eye) {
 }
 
 void SohVolumeRestartTracking(void) {
-    if (!gVolume.Started || gVolume.Stopped) {
+    if (!gVolume.Started || gVolume.Stopped || !gVolume.Active || gVolume.ActiveUpdates < kSettleUpdates) {
         return;
     }
     if (gVolume.TrackingProvider != nullptr &&
@@ -377,3 +396,31 @@ void SohVolumeNoteHoverLayout(int rebuilt) {
     }
 #endif
 }
+
+namespace {
+uint32_t gCopiesHeld = 0;
+}
+
+void SohVolumeNoteCopySkipped(void) {
+#ifdef ENABLE_DEBUG_TOOLS
+    if (gCopiesHeld++ == 0) {
+        Fast::ReportVisionOS("picture copy is held back while the scene is not active");
+    }
+#endif
+}
+
+void SohVolumeNoteCopyResumed(void) {
+#ifdef ENABLE_DEBUG_TOOLS
+    if (gCopiesHeld != 0) {
+        char line[96];
+        snprintf(line, sizeof(line), "picture copy runs again after %u held-back updates", gCopiesHeld);
+        Fast::ReportVisionOS(line);
+    }
+#endif
+    gCopiesHeld = 0;
+}
+
+void SohVolumeNoteCommit(void* commandBuffer) {
+    Fast::NoteVisionOSCommit(commandBuffer, Fast::VISIONOS_COMMIT_COPY);
+}
+

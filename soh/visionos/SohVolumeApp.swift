@@ -129,6 +129,7 @@ private func note(_ text: String) {
             }
             blit.endEncoding()
         }
+        SohVolumeNoteCommit(Unmanaged.passUnretained(buffer as AnyObject).toOpaque())
         buffer.commit()
         if copiedAnEye {
             done = true
@@ -392,7 +393,12 @@ private final class VolumeState {
             eyeNote = nil
             note(line)
         }
-        gPictureCopy.run(queue: queue, texture: texture)
+        if phase == 2 {
+            SohVolumeNoteCopyResumed()
+            gPictureCopy.run(queue: queue, texture: texture)
+        } else {
+            SohVolumeNoteCopySkipped()
+        }
     }
 }
 
@@ -455,6 +461,12 @@ private struct SohVolumeView: View {
             SohVolumeStart(Unmanaged.passUnretained(state.device as AnyObject).toOpaque(),
                                   Unmanaged.passUnretained(state.queue as AnyObject).toOpaque(),
                                   UInt32(kEyeWidth), UInt32(kTextureHeight))
+        }
+        .onDisappear {
+            state.phase = 0
+            SohVolumeNote("the volume is closed; the game waits until it opens again")
+            SohVolumeSetScenePhase(0)
+            Task { await holdSpace(false) }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
