@@ -1,4 +1,7 @@
-﻿#include "OTRGlobals.h"
+﻿#ifdef SOH_MOBILE
+#include <unistd.h>
+#endif
+#include "OTRGlobals.h"
 #include "OTRAudio.h"
 #include <algorithm>
 #include <atomic>
@@ -1940,6 +1943,20 @@ extern "C" void DeinitOTR() {
     SohGui::Destroy();
     sohFast3dWindow = nullptr;
 
+#ifdef SOH_MOBILE
+    if (sAppTerminating) {
+        auto context = OTRGlobals::Instance->context;
+        if (context->GetWindow() != nullptr) {
+            context->GetWindow()->SaveWindowToConfig();
+        }
+        if (context->GetConfig() != nullptr) {
+            context->GetConfig()->Save();
+        }
+        SoH_NoteShutdown("the system ends the app; the process ends now");
+        spdlog::shutdown();
+        _exit(0);
+    }
+#endif
     SoH_NoteShutdown("the menu is destroyed; the context goes next");
 
     Ship::Context::DestroyInstance();
