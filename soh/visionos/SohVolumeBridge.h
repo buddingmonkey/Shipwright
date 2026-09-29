@@ -48,6 +48,8 @@ void SohVolumeSetStereo(bool stereo);
 
 void* SohVolumeTexture(int eye);
 
+void SohVolumeNoteHoverLayout(int rebuilt);
+
 #ifdef __cplusplus
 }
 #endif
