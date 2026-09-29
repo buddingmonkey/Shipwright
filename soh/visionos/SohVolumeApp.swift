@@ -82,6 +82,21 @@ private func note(_ text: String) {
         done
     }
 
+    private var views: [ObjectIdentifier: any MTLTexture] = [:]
+
+    private func sourceView(of texture: any MTLTexture, format: MTLPixelFormat) -> (any MTLTexture)? {
+        if texture.pixelFormat == format {
+            return texture
+        }
+        let key = ObjectIdentifier(texture)
+        if let view = views[key], view.pixelFormat == format {
+            return view
+        }
+        let view = texture.makeTextureView(pixelFormat: format)
+        views[key] = view
+        return view
+    }
+
     func run(queue: any MTLCommandQueue, texture: LowLevelTexture) {
         guard let buffer = queue.makeCommandBuffer() else { return }
         let destination = texture.replace(using: buffer)
@@ -89,7 +104,8 @@ private func note(_ text: String) {
         if let blit = buffer.makeBlitCommandEncoder() {
             for eye in 0..<eyes {
                 guard let raw = SohVolumeTexture(Int32(eye)),
-                      let source = Unmanaged<AnyObject>.fromOpaque(raw).takeUnretainedValue() as? any MTLTexture
+                      let texture = Unmanaged<AnyObject>.fromOpaque(raw).takeUnretainedValue() as? any MTLTexture,
+                      let source = sourceView(of: texture, format: destination.pixelFormat)
                 else {
                     continue
                 }
