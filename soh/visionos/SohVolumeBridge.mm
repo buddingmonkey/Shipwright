@@ -339,3 +339,26 @@ void SohVolumeSetStereo(bool stereo) {
 void* SohVolumeTexture(int eye) {
     return Fast::GetVisionOSReadyGameTexture(eye);
 }
+
+void SohVolumeNoteHoverLayout(int rebuilt) {
+#ifdef ENABLE_DEBUG_TOOLS
+    static int sRuns = 0;
+    static int sRebuilt = 0;
+    static double sSince = 0.0;
+    const double now = CACurrentMediaTime();
+    if (sSince == 0.0) {
+        sSince = now;
+    }
+    ++sRuns;
+    sRebuilt += rebuilt;
+    if (now - sSince >= 5.0) {
+        char line[96];
+        snprintf(line, sizeof(line), "hover layout ran %d times and rebuilt %d plates in %.1f s", sRuns, sRebuilt,
+                 now - sSince);
+        Fast::ReportVisionOS(line);
+        sRuns = 0;
+        sRebuilt = 0;
+        sSince = now;
+    }
+#endif
+}

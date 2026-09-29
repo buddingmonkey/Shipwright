@@ -257,13 +257,14 @@ private final class VolumeState {
                                   item: rect.Identifier != 0))
         }
         if next != hoverShown || quadSize != hoverQuad {
+            let previous = quadSize == hoverQuad ? hoverShown : []
             hoverShown = next
             hoverQuad = quadSize
-            layOutHover(next)
+            layOutHover(next, previous: previous)
         }
     }
 
-    private func layOutHover(_ rects: [HoverRect]) {
+    private func layOutHover(_ rects: [HoverRect], previous: [HoverRect]) {
         guard let quad, let material = hoverMaterial, quadSize.x > 0.0, quadSize.y > 0.0 else { return }
         while hoverEntities.count < rects.count {
             let entity = ModelEntity()
@@ -271,12 +272,18 @@ private final class VolumeState {
             quad.addChild(entity)
             hoverEntities.append(entity)
         }
+        var rebuilt = 0
+        defer { SohVolumeNoteHoverLayout(Int32(rebuilt)) }
         for (index, entity) in hoverEntities.enumerated() {
             guard index < rects.count else {
                 entity.isEnabled = false
                 continue
             }
             let rect = rects[index]
+            if index < previous.count, previous[index] == rect {
+                continue
+            }
+            rebuilt += 1
             let width = Float(rect.frame.width) / Float(kEyeWidth) * quadSize.x
             let height = Float(rect.frame.height) / Float(kTextureHeight) * quadSize.y
             guard width > 0.0, height > 0.0 else {
@@ -309,12 +316,23 @@ private final class VolumeState {
         }
     }
 
+    private var held: SIMD2<Float>?
+
     func point(_ value: EntityTargetValue<DragGesture.Value>, pressed: Bool) {
         guard let quad, quadSize.x > 0.0, quadSize.y > 0.0 else { return }
         let local = value.convert(value.location3D, from: .local, to: quad)
         let u = min(max(local.x / quadSize.x + 0.5, 0.0), 1.0)
         let v = min(max(0.5 - local.y / quadSize.y, 0.0), 1.0)
-        SohVolumePoint(u * Float(kEyeWidth), v * Float(kTextureHeight), pressed)
+        let place = SIMD2(u * Float(kEyeWidth), v * Float(kTextureHeight))
+        held = pressed ? place : nil
+        SohVolumePoint(place.x, place.y, pressed)
+    }
+
+    func lift() {
+        guard let place = held else { return }
+        held = nil
+        SohVolumeNote("a pinch ended with no end event; the press is released")
+        SohVolumePoint(place.x, place.y, false)
     }
 
     private func quadLost(_ quad: ModelEntity) {
@@ -373,6 +391,7 @@ private struct SohVolumeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
+    @GestureState private var pinching = false
 
     var body: some View {
         GeometryReader3D { proxy in
@@ -388,9 +407,15 @@ private struct SohVolumeView: View {
             .gesture(
                 DragGesture(minimumDistance: 0.0)
                     .targetedToAnyEntity()
+                    .updating($pinching) { _, pinching, _ in pinching = true }
                     .onChanged { state.point($0, pressed: true) }
                     .onEnded { state.point($0, pressed: false) }
             )
+            .onChange(of: pinching) { was, now in
+                if was && !now {
+                    state.lift()
+                }
+            }
         }
         .handlesGameControllerEvents(matching: .gamepad)
         .ornament(attachmentAnchor: .scene(.bottom), contentAlignment: .top) {
