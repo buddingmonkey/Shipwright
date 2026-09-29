@@ -5,6 +5,7 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/ResourceManagerHelpers.h"
+#include "soh/ScenePrefetch.h"
 
 #include "message_data_static.h"
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -492,7 +493,7 @@ void GameState_Destroy(GameState* gameState) {
     ResourceMgr_ClearSkeletons();
 
     if (ResourceMgr_IsAltAssetsEnabled()) {
-        ResourceUnloadDirectory("alt/*");
+        ScenePrefetch_UnloadAlt();
         gfx_texture_cache_clear();
     }
 }

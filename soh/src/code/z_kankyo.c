@@ -6,6 +6,7 @@
 #include "soh/frame_interpolation.h"
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
+#include "soh/ScenePrefetch.h"
 #include "soh/Enhancements/savestate_serialize.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -613,6 +614,48 @@ void func_8006FB94(EnvironmentContext* envCtx, u8 unused) {
 
 extern SkyboxTableEntry sSkyboxTable[];
 
+s32 Environment_GetSkyboxPrefetch(PlayState* play, s32 ahead, const char** paths, s32 max) {
+    EnvironmentContext* envCtx = &play->envCtx;
+    u8 rows[4] = { envCtx->unk_17, envCtx->unk_18, 0, 1 };
+    s32 count = 0;
+    s32 r;
+    s32 i;
+    s32 k;
+    s32 t;
+
+    if (play->skyboxId != SKYBOX_NORMAL_SKY) {
+        return 0;
+    }
+
+    for (r = 0; r < ARRAY_COUNT(rows); r++) {
+        if (rows[r] >= ARRAY_COUNT(D_8011FC1C) || (r >= 2 && (rows[r] == rows[0] || rows[r] == rows[1]))) {
+            continue;
+        }
+        for (i = 0; i < ARRAY_COUNT(D_8011FC1C[0]); i++) {
+            if (gSaveContext.skyboxTime >= D_8011FC1C[rows[r]][i].startTime &&
+                (gSaveContext.skyboxTime < D_8011FC1C[rows[r]][i].endTime ||
+                 D_8011FC1C[rows[r]][i].endTime == 0xFFFF)) {
+                break;
+            }
+        }
+        if (i == ARRAY_COUNT(D_8011FC1C[0])) {
+            continue;
+        }
+        struct_8011FC1C* slot = &D_8011FC1C[rows[r]][(i + ahead) % ARRAY_COUNT(D_8011FC1C[0])];
+        u8 indices[2] = { slot->skybox1Index, slot->skybox2Index };
+        for (k = 0; k < 2; k++) {
+            SkyboxTableEntry* entry = &sSkyboxTable[indices[k]];
+            for (t = 0; t < 5 && count < max; t++) {
+                paths[count++] = entry->textures[t];
+            }
+            if (count < max) {
+                paths[count++] = entry->palettes[0];
+            }
+        }
+    }
+    return count;
+}
+
 void Environment_UpdateSkybox(PlayState* play, u8 skyboxId, EnvironmentContext* envCtx, SkyboxContext* skyboxCtx) {
     size_t size;
     u8 i;
@@ -670,6 +713,7 @@ void Environment_UpdateSkybox(PlayState* play, u8 skyboxId, EnvironmentContext* 
         }
 
         func_8006FB94(envCtx, skyboxBlend);
+        ScenePrefetch_Sky(play);
 
         if (envCtx->unk_19 >= 3) {
             newSkybox1Index = D_8011FC1C[envCtx->unk_17][i].skybox1Index;
