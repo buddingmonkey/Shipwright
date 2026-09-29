@@ -300,6 +300,41 @@ void SohVolumeUpdate(SohVolumeFrame frame) {
         }
     }
 
+#ifdef ENABLE_DEBUG_TOOLS
+    {
+        static double sRead = 0.0;
+        static simd_float3 sForced = { 0.0f, 0.0f, 0.0f };
+        if (now - sRead > 0.5) {
+            sRead = now;
+            sForced = simd_make_float3(0.0f, 0.0f, 0.0f);
+            NSString* documents =
+                NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+            NSString* text = [NSString stringWithContentsOfFile:[documents stringByAppendingPathComponent:@"debug-head"]
+                                                       encoding:NSUTF8StringEncoding
+                                                          error:nil];
+            float x = 0.0f, y = 0.0f, z = 0.0f;
+            if (text != nil && sscanf(text.UTF8String, "%f %f %f", &x, &y, &z) >= 1) {
+                sForced = simd_make_float3(x, y, z);
+            }
+        }
+        if (sample.HeadValid) {
+            sample.Head += sForced;
+        }
+        static double sSaid = 0.0;
+        if (now - sSaid > 2.0) {
+            sSaid = now;
+            const int state =
+                gVolume.TrackingProvider != nullptr ? (int)ar_data_provider_get_state(gVolume.TrackingProvider) : -1;
+            char line[200];
+            snprintf(line, sizeof(line),
+                     "head valid %d at %.3f,%.3f,%.3f (forced %.3f,%.3f,%.3f), state %d, provider %d, active %d, "
+                     "settled %d, quad %d",
+                     sample.HeadValid ? 1 : 0, sample.Head.x, sample.Head.y, sample.Head.z, sForced.x, sForced.y,
+                     sForced.z, headState, state, gVolume.Active ? 1 : 0, gVolume.ActiveUpdates, frame.HasQuad ? 1 : 0);
+            Fast::ReportVisionOS(line);
+        }
+    }
+#endif
     {
         std::lock_guard<std::mutex> lock(gVolume.Mutex);
         gVolume.Latest = sample;
