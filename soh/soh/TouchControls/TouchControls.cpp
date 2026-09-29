@@ -35,6 +35,10 @@ bool TouchControls_Active() {
 #include <jni.h>
 #endif
 
+#if defined(__IOS__) && !defined(SOH_VISIONOS)
+#include "SafeAreaIos.h"
+#endif
+
 #include <SDL2/SDL.h>
 #include <imgui.h>
 #include <fast/Fast3dWindow.h>
@@ -251,7 +255,7 @@ std::atomic<int> sInsetPx[INSET_COUNT] = {};
 #endif
 
 Insets SafeArea(float pointHeight) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
     if (pointHeight <= 0.0f) {
         return {};
     }
@@ -259,14 +263,19 @@ Insets SafeArea(float pointHeight) {
         return sInsetPx[which].load(std::memory_order_relaxed) / pointHeight;
     };
     const Insets in = { edge(INSET_LEFT), edge(INSET_RIGHT), edge(INSET_TOP), edge(INSET_BOTTOM) };
+#elif defined(__IOS__) && !defined(SOH_VISIONOS)
+    (void)pointHeight;
+    const TouchControlsSafeArea area = TouchControls_IosSafeArea();
+    const Insets in = { std::max(area.left, 0.0f), std::max(area.right, 0.0f), std::max(area.top, 0.0f),
+                        std::max(area.bottom, 0.0f) };
+#else
+    (void)pointHeight;
+    const Insets in;
+#endif
     if (in.left + in.right >= 0.5f || in.top + in.bottom >= 0.5f) {
         return {};
     }
     return in;
-#else
-    (void)pointHeight;
-    return {};
-#endif
 }
 
 constexpr float kMmPerInch = 25.4f;
@@ -431,17 +440,39 @@ struct LayoutKey {
     bool operator==(const LayoutKey&) const = default;
 };
 
-void BuildLayout(const LayoutKey& key) {
+constexpr float kMinSize = 0.4f;
+constexpr float kPortraitAspect = 1.0f;
+
+struct Extent {
+    float min = FLT_MAX;
+    float max = -FLT_MAX;
+
+    void Add(float lo, float hi) {
+        min = std::min(min, lo);
+        max = std::max(max, hi);
+    }
+    void Add(const Button& b) {
+        if (b.enabled) {
+            Add(b.center.x - b.halfExtent.x, b.center.x + b.halfExtent.x);
+        }
+    }
+};
+
+float RowFit(const Extent& leftGroup, const Extent& rightGroup, const Bounds& edge, float reserved) {
+    if (leftGroup.min > leftGroup.max || rightGroup.min > rightGroup.max) {
+        return 1.0f;
+    }
+    const float need = (leftGroup.max - edge.left) + (edge.right - rightGroup.min);
+    const float room = edge.right - edge.left - reserved;
+    return need > room && need > 0.0f ? std::max(room, 0.0f) / need : 1.0f;
+}
+
+Layout BuildLayoutAt(const LayoutKey& key, DeviceClass device, float unit, float size, float* widthFit) {
     Layout l;
     l.aspect = key.aspect;
 
-    const DeviceClass device = DeviceClassFor(key.pointHeight, key.device);
-    const float unit = PointsPerMm(device) / key.pointHeight;
-
     const bool modern = key.scheme == CONTROL_SCHEME_MODERN;
-    const float railMm = device == DEVICE_PHONE ? kRailMm : 0.0f;
-    const float budget = (1.0f - key.insets.top - key.insets.bottom) / unit - 2.0f * key.margin;
-    const float size = std::max(std::min(key.size, budget / ((modern ? kModernFaceMm : kFaceMm) + railMm)), 0.4f);
+    const bool portrait = key.aspect < kPortraitAspect;
 
     const auto mm = [unit](float millimetres) { return millimetres * unit; };
     const auto sz = [unit, size](float millimetres) { return millimetres * unit * size; };
@@ -451,8 +482,10 @@ void BuildLayout(const LayoutKey& key) {
     const float side = margin + std::max(key.insets.left, key.insets.right);
     const float left = side;
     const float right = key.aspect - side;
-    const float top = margin + key.insets.top;
+    const float screenTop = margin + key.insets.top;
     const float bottom = 1.0f - margin - key.insets.bottom;
+    const float faceMm = modern ? kModernFaceMm : kFaceMm;
+    const float top = portrait ? std::max(screenTop, bottom - sz(faceMm + kRailMm)) : screenTop;
     const Bounds edge = { left, right, bottom };
 
     const Vec2 shoulder = { sz(7.0f), sz(4.2f) };
@@ -464,8 +497,9 @@ void BuildLayout(const LayoutKey& key) {
     l.menuHalfExtent = { menuHalf, menuHalf };
     const float menuStack = menuHalf * 2.0f + railGap;
 
-    const bool sideRail = device == DEVICE_TABLET && bottom - arc(75.0f) >= top + menuStack + railTop;
-    l.menuCenter = { sideRail ? left + menuHalf : key.aspect * 0.5f, top + menuHalf };
+    const bool sideRail = !portrait && device == DEVICE_TABLET && bottom - arc(75.0f) >= top + menuStack + railTop;
+    const bool menuInRow = !sideRail && !portrait;
+    l.menuCenter = { menuInRow ? key.aspect * 0.5f : left + menuHalf, (portrait ? screenTop : top) + menuHalf };
     const float railCeiling = sideRail ? top + menuStack : top;
 
     float railBottom = top;
@@ -545,15 +579,55 @@ void BuildLayout(const LayoutKey& key) {
     FitRange(l, CTRL_DUP, CTRL_DRIGHT, edge, clusterCeiling);
 
     const float sweep = arc(60.0f);
-    l.stickZoneMin = { 0.0f, std::max(bottom - sweep, 0.28f) };
+    l.stickZoneMin = { 0.0f, std::max(bottom - sweep, portrait ? top : 0.28f) };
     l.stickZoneMax = { std::min(left + sweep, key.aspect * 0.45f), 1.0f };
     if (dpad) {
         const float dpadBottom = l.buttons[CTRL_DDOWN].center.y + dRad;
         l.stickZoneMin.y = std::max(l.stickZoneMin.y, dpadBottom + sz(1.0f));
     }
 
+    Extent railLeft;
+    Extent railRight;
+    railLeft.Add(l.buttons[CTRL_Z]);
+    railLeft.Add(l.buttons[CTRL_L]);
+    railRight.Add(l.buttons[CTRL_R]);
+    railRight.Add(l.buttons[CTRL_START]);
+    Extent clusterLeft;
+    Extent clusterRight;
+    clusterLeft.Add(l.stickHome.x - l.stickBase, l.stickHome.x + l.stickBase);
+    for (int i = CTRL_DUP; i <= CTRL_DRIGHT; i++) {
+        clusterLeft.Add(l.buttons[i]);
+    }
+    for (int i = CTRL_A; i <= CTRL_CRIGHT; i++) {
+        clusterRight.Add(l.buttons[i]);
+    }
+    if (l.rightStick) {
+        clusterRight.Add(l.rightStickHome.x - l.rightStickBase, l.rightStickHome.x + l.rightStickBase);
+    }
+    const float gap = sz(kRailGapMm);
+    const float menuRoom = menuInRow ? menuHalf * 2.0f + gap * 2.0f : gap;
+    *widthFit = std::min(RowFit(railLeft, railRight, edge, menuRoom), RowFit(clusterLeft, clusterRight, edge, gap));
+
     if (key.mirror != 0) {
         MirrorLayout(l);
+    }
+    return l;
+}
+
+void BuildLayout(const LayoutKey& key) {
+    const DeviceClass device = DeviceClassFor(std::min(key.pointHeight, key.pointHeight * key.aspect), key.device);
+    const float unit = PointsPerMm(device) / key.pointHeight;
+
+    const bool modern = key.scheme == CONTROL_SCHEME_MODERN;
+    const float railMm = device == DEVICE_PHONE ? kRailMm : 0.0f;
+    const float budget = (1.0f - key.insets.top - key.insets.bottom) / unit - 2.0f * key.margin;
+    float size = std::max(std::min(key.size, budget / ((modern ? kModernFaceMm : kFaceMm) + railMm)), kMinSize);
+
+    float widthFit = 1.0f;
+    Layout l = BuildLayoutAt(key, device, unit, size, &widthFit);
+    if (widthFit < 1.0f && size > kMinSize) {
+        size = std::max(size * widthFit, kMinSize);
+        l = BuildLayoutAt(key, device, unit, size, &widthFit);
     }
 
     sLayout = l;
