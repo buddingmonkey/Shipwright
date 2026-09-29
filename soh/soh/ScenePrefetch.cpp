@@ -6,13 +6,16 @@
 #include <cstring>
 #include <future>
 #include <list>
+#include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 #include <fast/resource/ResourceType.h>
 #include <ship/Context.h>
 #include <ship/resource/ResourceManager.h>
+#include <ship/utils/glob.h>
 #include <spdlog/spdlog.h>
 
 #include "ResourceManagerHelpers.h"
@@ -77,19 +80,46 @@ bool Wanted(const Request& request, const std::string& path) {
     return end != digits && room == request.room;
 }
 
+struct AltFiles {
+    std::vector<std::string> list;
+    std::unordered_set<std::string> set;
+};
+
+const AltFiles& GetAltFiles() {
+    static std::once_flag once;
+    static AltFiles files;
+    std::call_once(once, []() {
+        auto list = Ship::Context::GetRawInstance()->GetResourceManager()->GetArchiveManager()->ListFiles("alt/*");
+        files.list = *list;
+        files.set.insert(files.list.begin(), files.list.end());
+    });
+    return files;
+}
+
+bool MatchesAny(const std::list<std::string>& masks, const std::string& path) {
+    for (const auto& mask : masks) {
+        if (glob_match(mask.c_str(), path.c_str())) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::vector<ResourceFuture> Plan(const Request& request) {
     auto resourceManager = Ship::Context::GetRawInstance()->GetResourceManager();
+    const AltFiles& altFiles = GetAltFiles();
     std::vector<ResourceFuture> loads;
     if (!request.masks.empty()) {
-        auto files = resourceManager->GetArchiveManager()->ListFiles(request.masks, {});
-        for (const auto& file : *files) {
-            if (Wanted(request, file)) {
+        for (const auto& file : altFiles.list) {
+            if (MatchesAny(request.masks, file) && Wanted(request, file)) {
                 loads.push_back(resourceManager->LoadResourceAsync(file, true));
             }
         }
     }
     for (const auto& file : request.exact) {
-        loads.push_back(resourceManager->LoadResourceAsync(file, true));
+        if (altFiles.set.contains(file)) {
+            loads.push_back(resourceManager->LoadResourceAsync(file, true));
+        }
     }
     return loads;
 }
@@ -249,8 +279,7 @@ extern "C" bool ScenePrefetch_Hold(void) {
 extern "C" void ScenePrefetch_UnloadAlt(void) {
     sStarted = false;
     auto resourceManager = Ship::Context::GetRawInstance()->GetResourceManager();
-    auto files = resourceManager->GetArchiveManager()->ListFiles("alt/*");
-    for (const auto& file : *files) {
+    for (const auto& file : GetAltFiles().list) {
         if (IsResident(file)) {
             auto resource = resourceManager->GetCachedResource(file, true);
             if (resource != nullptr &&
