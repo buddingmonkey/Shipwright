@@ -462,6 +462,12 @@ private struct SohVolumeView: View {
                                   Unmanaged.passUnretained(state.queue as AnyObject).toOpaque(),
                                   UInt32(kEyeWidth), UInt32(kTextureHeight))
         }
+        .onDisappear {
+            state.phase = 0
+            SohVolumeNote("the volume is closed; the game waits until it opens again")
+            SohVolumeSetScenePhase(0)
+            Task { await holdSpace(false) }
+        }
         .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
             case .background: state.phase = 0
