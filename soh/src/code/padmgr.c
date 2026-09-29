@@ -4,6 +4,12 @@
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/controls/Mouse.h"
+#ifdef SOH_TOUCH_CONTROLS
+#include "soh/TouchControls/TouchControls.h"
+#endif
+#ifdef ENABLE_DEBUG_TOOLS
+#include "soh/TouchControls/DebugPad.h"
+#endif
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
@@ -319,6 +325,14 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
     osContGetReadData(padMgr->pads);
 
     Mouse_UpdateAll();
+
+#ifdef SOH_TOUCH_CONTROLS
+    TouchControls_Poll();
+    TouchControls_MergeInto(&padMgr->pads[0]);
+#endif
+#ifdef ENABLE_DEBUG_TOOLS
+    DebugPad_MergeInto(&padMgr->pads[0]);
+#endif
 
     for (i = 0; i < __osMaxControllers; i++) {
         padMgr->padStatus[i].status = Controller_ShouldRumble(i);

@@ -236,6 +236,11 @@ endif()
 
 set(ROOT_NAMESPACE soh)
 
+option(SOH_TOUCH_CONTROLS "Compile the on-screen touch controls" OFF)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR SOH_TOUCH_CONTROLS)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE SOH_TOUCH_CONTROLS)
+endif()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set_target_properties(${PROJECT_NAME} PROPERTIES
         VS_GLOBAL_KEYWORD "Win32Proj"

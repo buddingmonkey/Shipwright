@@ -54,6 +54,14 @@ static const std::map<int32_t, const char*> notificationPosition = {
     { 0, "Top Left" }, { 1, "Top Right" }, { 2, "Bottom Left" }, { 3, "Bottom Right" }, { 4, "Hidden" },
 };
 
+#ifdef SOH_TOUCH_CONTROLS
+static const std::map<int32_t, const char*> touchLayoutOptions = {
+    { 0, "Automatic" },
+    { 1, "Phone" },
+    { 2, "Tablet" },
+};
+#endif
+
 static const std::map<int32_t, const char*> bootSequenceLabels = {
     { BOOTSEQUENCE_DEFAULT, "Default" },        { BOOTSEQUENCE_AUTHENTIC, "Authentic" },
     { BOOTSEQUENCE_FILESELECT, "File Select" }, { BOOTSEQUENCE_DEBUGWARPSCREEN, "Debug Warp Screen" },
@@ -460,6 +468,54 @@ void SohMenu::AddMenuSettings() {
         .WindowName("Configure Controller")
         .HideInSearch(true)
         .Options(WindowButtonOptions().Tooltip("Enables the separate Bindings Window."));
+#ifdef SOH_TOUCH_CONTROLS
+    AddWidget(path, "On-Screen Controls", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Show On-Screen Controls", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("TouchControls.Enabled"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip("Shows the touch controls over the game."));
+    AddWidget(path, "Hide With Gamepad", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("TouchControls.HideWithGamepad"))
+        .RaceDisable(false)
+        .Options(
+            CheckboxOptions().DefaultValue(true).Tooltip("Hides the touch controls while a gamepad is connected."));
+    AddWidget(path, "Show D-Pad", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("TouchControls.ShowDPad"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().Tooltip("Shows a D-Pad for the enhancements that use it."));
+    AddWidget(path, "Left-Handed Layout", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("TouchControls.Mirror"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().Tooltip("Puts the stick on the right and the buttons on the left."));
+    AddWidget(path, "Layout", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("TouchControls.Layout"))
+        .RaceDisable(false)
+        .Options(ComboboxOptions()
+                     .ComboMap(touchLayoutOptions)
+                     .DefaultIndex(0)
+                     .Tooltip("Automatic selects the phone or tablet layout from the screen size."));
+    AddWidget(path, "Control Size", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("TouchControls.Scale"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Min(0.7f).Max(1.4f).DefaultValue(1.0f).Format("%.2f"));
+    AddWidget(path, "Control Reach", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("TouchControls.Reach"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Min(0.8f).Max(1.25f).DefaultValue(1.0f).Format("%.2f").Tooltip(
+            "Sets how far the buttons are from the corners of the screen."));
+    AddWidget(path, "Control Opacity", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("TouchControls.Opacity"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Min(0.05f).Max(1.0f).DefaultValue(0.4f).Format("%.2f"));
+    AddWidget(path, "Edge Margin", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("TouchControls.EdgeMargin"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Min(0.0f).Max(10.0f).DefaultValue(3.0f).Format("%.1f mm"));
+    AddWidget(path, "Touch Stick Deadzone", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("TouchControls.Deadzone"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Min(0.0f).Max(0.5f).DefaultValue(0.12f).Format("%.2f"));
+#endif
 
     // Input Viewer
     path.sidebarName = "Input Viewer";
