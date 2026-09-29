@@ -427,7 +427,6 @@ struct LayoutKey {
     int dpad = 0;
     int mirror = 0;
     int scheme = 0;
-    int padHidden = 0;
 
     bool operator==(const LayoutKey&) const = default;
 };
@@ -466,9 +465,8 @@ void BuildLayout(const LayoutKey& key) {
     const float menuStack = menuHalf * 2.0f + railGap;
 
     const bool sideRail = device == DEVICE_TABLET && bottom - arc(75.0f) >= top + menuStack + railTop;
-    const bool cornerMenu = sideRail || key.padHidden != 0;
-    l.menuCenter = { cornerMenu ? left + menuHalf : key.aspect * 0.5f, top + menuHalf };
-    const float railCeiling = cornerMenu ? top + menuStack : top;
+    l.menuCenter = { sideRail ? left + menuHalf : key.aspect * 0.5f, top + menuHalf };
+    const float railCeiling = sideRail ? top + menuStack : top;
 
     float railBottom = top;
     if (!sideRail) {
@@ -576,7 +574,6 @@ void EnsureLayout(float aspect, float pointHeight) {
     key.dpad = CVarGetInteger(CVAR_TOUCH("ShowDPad"), 0);
     key.mirror = CVarGetInteger(CVAR_TOUCH("Mirror"), 0);
     key.scheme = CONTROL_SCHEME_RETRO;
-    key.padHidden = CVarGetInteger(CVAR_TOUCH("HideWithGamepad"), 1) && sGamepadPresent ? 1 : 0;
     if (sLayoutValid && key == sBuiltKey) {
         return;
     }
