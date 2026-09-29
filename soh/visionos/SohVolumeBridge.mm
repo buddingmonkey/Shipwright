@@ -47,6 +47,7 @@ struct VolumeState {
     id<MTLCommandQueue> Queue = nil;
     ar_session_t Session = nullptr;
     ar_world_tracking_provider_t TrackingProvider = nullptr;
+    bool Active = true;
     ar_device_anchor_t DeviceAnchor = nullptr;
     dispatch_semaphore_t Frame = nullptr;
     std::mutex Mutex;
@@ -258,7 +259,9 @@ void SohVolumeUpdate(SohVolumeFrame frame) {
     sample.QuadValid = frame.HasQuad;
 
     int headState;
-    if (gVolume.TrackingProvider == nullptr) {
+    if (!gVolume.Active) {
+        headState = kHeadNoTracking;
+    } else if (gVolume.TrackingProvider == nullptr) {
         headState = kHeadNoTracking;
     } else if (!frame.HasQuad) {
         headState = kHeadNoQuad;
@@ -328,6 +331,13 @@ void SohVolumeSetScenePhase(int phase) {
     sPhase = phase;
     Fast::ReportVisionOSCommits(phase);
     SoH_SetAppOnScreen(phase == 2 ? 1 : 0);
+    gVolume.Active = phase == 2;
+    if (!gVolume.Active && gVolume.Session != nullptr && !gVolume.Stopped) {
+        ar_session_stop(gVolume.Session);
+        Fast::ReportVisionOS("world tracking is stopped while the scene is not active");
+    } else if (gVolume.Active) {
+        SohVolumeRestartTracking();
+    }
     char line[80];
     snprintf(line, sizeof(line), "the scene phase is %d, where 2 is active and 0 is background", phase);
     Fast::ReportVisionOS(line);
