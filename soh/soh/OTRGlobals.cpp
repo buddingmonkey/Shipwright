@@ -355,7 +355,7 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
 }
 
 static void ParkWhileOffScreen() {
-    while (!sAppOnScreen || sWindowMinimized) {
+    while ((!sAppOnScreen || sWindowMinimized) && WindowIsRunning() && !SDL_HasEvent(SDL_QUIT)) {
         SDL_PumpEvents();
         SDL_Delay(50);
     }
