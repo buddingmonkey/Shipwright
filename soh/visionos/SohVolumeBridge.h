@@ -54,6 +54,10 @@ void SohVolumeNoteHoverLayout(int rebuilt);
 
 void SohVolumeNoteCopySkipped(void);
 
+void SohVolumeNoteCopyResumed(void);
+
+void SohVolumeNoteCommit(void* commandBuffer);
+
 #ifdef __cplusplus
 }
 #endif

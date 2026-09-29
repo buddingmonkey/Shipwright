@@ -326,6 +326,7 @@ void SohVolumeSetScenePhase(int phase) {
         return;
     }
     sPhase = phase;
+    Fast::ReportVisionOSCommits(phase);
     SoH_SetAppOnScreen(phase == 2 ? 1 : 0);
     char line[80];
     snprintf(line, sizeof(line), "the scene phase is %d, where 2 is active and 0 is background", phase);
@@ -378,13 +379,30 @@ void SohVolumeNoteHoverLayout(int rebuilt) {
 #endif
 }
 
+namespace {
+uint32_t gCopiesHeld = 0;
+}
+
 void SohVolumeNoteCopySkipped(void) {
 #ifdef ENABLE_DEBUG_TOOLS
-    static uint32_t sSkipped = 0;
-    if (sSkipped++ % 90 == 0) {
-        char line[96];
-        snprintf(line, sizeof(line), "picture copy held back while the scene is not active (%u)", sSkipped);
-        Fast::ReportVisionOS(line);
+    if (gCopiesHeld++ == 0) {
+        Fast::ReportVisionOS("picture copy is held back while the scene is not active");
     }
 #endif
 }
+
+void SohVolumeNoteCopyResumed(void) {
+#ifdef ENABLE_DEBUG_TOOLS
+    if (gCopiesHeld != 0) {
+        char line[96];
+        snprintf(line, sizeof(line), "picture copy runs again after %u held-back updates", gCopiesHeld);
+        Fast::ReportVisionOS(line);
+    }
+#endif
+    gCopiesHeld = 0;
+}
+
+void SohVolumeNoteCommit(void* commandBuffer) {
+    Fast::NoteVisionOSCommit(commandBuffer, Fast::VISIONOS_COMMIT_COPY);
+}
+

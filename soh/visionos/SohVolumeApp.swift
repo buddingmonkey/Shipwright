@@ -129,6 +129,7 @@ private func note(_ text: String) {
             }
             blit.endEncoding()
         }
+        SohVolumeNoteCommit(Unmanaged.passUnretained(buffer as AnyObject).toOpaque())
         buffer.commit()
         if copiedAnEye {
             done = true
@@ -393,6 +394,7 @@ private final class VolumeState {
             note(line)
         }
         if phase == 2 {
+            SohVolumeNoteCopyResumed()
             gPictureCopy.run(queue: queue, texture: texture)
         } else {
             SohVolumeNoteCopySkipped()
