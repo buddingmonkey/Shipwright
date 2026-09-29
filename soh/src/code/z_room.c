@@ -309,11 +309,13 @@ void Room_DrawBackground2D(Gfx** gfxP, void* tex, void* tlut, u16 width, u16 hei
         // When larger than 4:3 we want to render an additional black rectangle behind the 2d image
         // to simulate black bars on the side that cover up the world
         s16 newX = OTRGetRectDimensionFromLeftEdge(0);
-        if (newX < 0) {
+        s16 newY = OTRGetRectDimensionFromTopEdge(0);
+        if (newX < 0 || newY < 0) {
             gDPSetOtherMode(gfx++, tlutMode | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_FILL | G_PM_NPRIMITIVE,
                             G_AC_THRESHOLD | G_ZS_PIXEL | G_RM_NOOP | G_RM_NOOP2);
             gDPSetFillColor(gfx++, GPACK_RGBA5551(0, 0, 0, 1) << 16 | GPACK_RGBA5551(0, 0, 0, 1));
-            gDPFillWideRectangle(gfx++, newX, 0, OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH), SCREEN_HEIGHT);
+            gDPFillWideRectangle(gfx++, newX, newY, OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH),
+                                 OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT));
         }
         // #endregion
 

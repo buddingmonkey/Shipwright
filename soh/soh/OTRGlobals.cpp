@@ -2782,12 +2782,30 @@ extern "C" float OTRGetAspectRatio() {
     return Ship::Context::GetRawInstance()->GetWindow()->GetAspectRatio();
 }
 
+static float OTRGetHalfScreenWidth() {
+    float aspectRatio = OTRGetAspectRatio();
+    return aspectRatio < 4.0f / 3.0f ? SCREEN_WIDTH / 2 : SCREEN_HEIGHT / 2 * aspectRatio;
+}
+
+static float OTRGetHalfScreenHeight() {
+    float aspectRatio = OTRGetAspectRatio();
+    return aspectRatio < 4.0f / 3.0f ? SCREEN_WIDTH / 2 / aspectRatio : SCREEN_HEIGHT / 2;
+}
+
 extern "C" float OTRGetDimensionFromLeftEdge(float v) {
-    return (SCREEN_WIDTH / 2 - SCREEN_HEIGHT / 2 * OTRGetAspectRatio() + (v));
+    return (SCREEN_WIDTH / 2 - OTRGetHalfScreenWidth() + (v));
 }
 
 extern "C" float OTRGetDimensionFromRightEdge(float v) {
-    return (SCREEN_WIDTH / 2 + SCREEN_HEIGHT / 2 * OTRGetAspectRatio() - (SCREEN_WIDTH - v));
+    return (SCREEN_WIDTH / 2 + OTRGetHalfScreenWidth() - (SCREEN_WIDTH - v));
+}
+
+extern "C" float OTRGetDimensionFromTopEdge(float v) {
+    return (SCREEN_HEIGHT / 2 - OTRGetHalfScreenHeight() + (v));
+}
+
+extern "C" float OTRGetDimensionFromBottomEdge(float v) {
+    return (SCREEN_HEIGHT / 2 + OTRGetHalfScreenHeight() - (SCREEN_HEIGHT - v));
 }
 
 // Gets the width of the current render target area
@@ -2831,6 +2849,14 @@ extern "C" int16_t OTRGetRectDimensionFromLeftEdge(float v) {
 
 extern "C" int16_t OTRGetRectDimensionFromRightEdge(float v) {
     return ((int)ceilf(OTRGetDimensionFromRightEdge(v)));
+}
+
+extern "C" int16_t OTRGetRectDimensionFromTopEdge(float v) {
+    return ((int)floorf(OTRGetDimensionFromTopEdge(v)));
+}
+
+extern "C" int16_t OTRGetRectDimensionFromBottomEdge(float v) {
+    return ((int)ceilf(OTRGetDimensionFromBottomEdge(v)));
 }
 
 int AudioPlayer_Buffered(void) {

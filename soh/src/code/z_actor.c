@@ -2919,10 +2919,16 @@ void Actor_DrawLensOverlay(GraphicsContext* gfxCtx) {
 
     s32 x = OTRGetRectDimensionFromLeftEdge(0) << 2;
     s32 w = OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2;
+    s32 y = OTRGetRectDimensionFromTopEdge(0) << 2;
+    s32 h = OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT) << 2;
 
     gDPSetTileSize(POLY_XLU_DISP++, G_TX_RENDERTILE, (SCREEN_WIDTH / 2 - LENS_MASK_WIDTH) << 2,
                    (SCREEN_HEIGHT / 2 - LENS_MASK_HEIGHT) << 2, (SCREEN_WIDTH / 2 + LENS_MASK_WIDTH - 1) << 2,
                    (SCREEN_HEIGHT / 2 + LENS_MASK_HEIGHT - 1) << 2);
+    if (y < 0) {
+        gSPWideTextureRectangle(POLY_XLU_DISP++, x, y, w, 0, G_TX_RENDERTILE, 0, 0, 0, 0);
+        gSPWideTextureRectangle(POLY_XLU_DISP++, x, SCREEN_HEIGHT << 2, w, h, G_TX_RENDERTILE, 0, 0, 0, 0);
+    }
     gSPWideTextureRectangle(POLY_XLU_DISP++, x, 0, x + abs(x), SCREEN_HEIGHT << 2, G_TX_RENDERTILE, 0, 0, 0, 0);
     gSPWideTextureRectangle(POLY_XLU_DISP++, 0, 0, w, SCREEN_HEIGHT << 2, G_TX_RENDERTILE, LENS_MASK_OFFSET_S << 5,
                             LENS_MASK_OFFSET_T << 5, (1 << 10) * (SCREEN_WIDTH - 2 * LENS_MASK_OFFSET_S) / SCREEN_WIDTH,

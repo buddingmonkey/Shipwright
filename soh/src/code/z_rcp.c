@@ -1587,8 +1587,11 @@ void Gfx_SetupFrame(GraphicsContext* gfxCtx, u8 r, u8 g, u8 b) {
         gDPSetCycleType(POLY_OPA_DISP++, G_CYC_FILL);
         gDPSetRenderMode(POLY_OPA_DISP++, G_RM_NOOP, G_RM_NOOP2);
         gDPSetFillColor(POLY_OPA_DISP++, (GPACK_ZDZ(G_MAXFBZ, 0) << 16) | GPACK_ZDZ(G_MAXFBZ, 0));
-        gDPFillWideRectangle(POLY_OPA_DISP++, OTRGetRectDimensionFromLeftEdge(0), letterboxSize,
-                             OTRGetRectDimensionFromRightEdge(gScreenWidth - 1), gScreenHeight - letterboxSize - 1);
+        s32 fillTop = letterboxSize > 0 ? letterboxSize : OTRGetRectDimensionFromTopEdge(0);
+        s32 fillBottom = letterboxSize > 0 ? gScreenHeight - letterboxSize - 1
+                                           : OTRGetRectDimensionFromBottomEdge(gScreenHeight - 1);
+        gDPFillWideRectangle(POLY_OPA_DISP++, OTRGetRectDimensionFromLeftEdge(0), fillTop,
+                             OTRGetRectDimensionFromRightEdge(gScreenWidth - 1), fillBottom);
         gDPPipeSync(POLY_OPA_DISP++);
 
         // Fill the whole screen with the base color
@@ -1597,8 +1600,8 @@ void Gfx_SetupFrame(GraphicsContext* gfxCtx, u8 r, u8 g, u8 b) {
         gDPSetCycleType(POLY_OPA_DISP++, G_CYC_FILL);
         gDPSetRenderMode(POLY_OPA_DISP++, G_RM_NOOP, G_RM_NOOP2);
         gDPSetFillColor(POLY_OPA_DISP++, (GPACK_RGBA5551(r, g, b, 1) << 16) | GPACK_RGBA5551(r, g, b, 1));
-        gDPFillWideRectangle(POLY_OPA_DISP++, OTRGetRectDimensionFromLeftEdge(0), letterboxSize,
-                             OTRGetRectDimensionFromRightEdge(gScreenWidth - 1), gScreenHeight - letterboxSize - 1);
+        gDPFillWideRectangle(POLY_OPA_DISP++, OTRGetRectDimensionFromLeftEdge(0), fillTop,
+                             OTRGetRectDimensionFromRightEdge(gScreenWidth - 1), fillBottom);
         gDPPipeSync(POLY_OPA_DISP++);
 
         // Draw the letterbox if applicable (uses the same color as the screen base)
@@ -1607,10 +1610,11 @@ void Gfx_SetupFrame(GraphicsContext* gfxCtx, u8 r, u8 g, u8 b) {
             gDPSetCycleType(OVERLAY_DISP++, G_CYC_FILL);
             gDPSetRenderMode(OVERLAY_DISP++, G_RM_NOOP, G_RM_NOOP2);
             gDPSetFillColor(OVERLAY_DISP++, (GPACK_RGBA5551(r, g, b, 1) << 16) | GPACK_RGBA5551(r, g, b, 1));
-            gDPFillWideRectangle(OVERLAY_DISP++, OTRGetRectDimensionFromLeftEdge(0), 0,
+            gDPFillWideRectangle(OVERLAY_DISP++, OTRGetRectDimensionFromLeftEdge(0), OTRGetRectDimensionFromTopEdge(0),
                                  OTRGetRectDimensionFromRightEdge(gScreenWidth - 1), letterboxSize - 1);
             gDPFillWideRectangle(OVERLAY_DISP++, OTRGetRectDimensionFromLeftEdge(0), gScreenHeight - letterboxSize,
-                                 OTRGetRectDimensionFromRightEdge(gScreenWidth - 1), gScreenHeight - 1);
+                                 OTRGetRectDimensionFromRightEdge(gScreenWidth - 1),
+                                 OTRGetRectDimensionFromBottomEdge(gScreenHeight - 1));
             gDPPipeSync(OVERLAY_DISP++);
         }
     }

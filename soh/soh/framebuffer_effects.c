@@ -102,6 +102,10 @@ void FB_WriteFramebufferSliceToCPU(Gfx** gfxp, void* buffer, u8 byteSwap) {
         int16_t adjustedWidth = (s16)(OTRGetGameRenderWidth() / (aspectRatio / fourByThree));
         s0 = (OTRGetGameRenderWidth() - adjustedWidth) / 2;
         s1 -= s0;
+    } else if (aspectRatio < fourByThree) {
+        int16_t adjustedHeight = (s16)(OTRGetGameRenderHeight() * (aspectRatio / fourByThree));
+        t0 = (OTRGetGameRenderHeight() - adjustedHeight) / 2;
+        t1 -= t0;
     }
 
     gDPSetTextureImageFB(gfx++, 0, 0, 0, gReusableFrameBuffer);
@@ -142,8 +146,9 @@ void FB_DrawFromFramebuffer(Gfx** gfxp, s32 fb, u8 alpha) {
     gDPSetScissor(gfx++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     gDPSetTextureImageFB(gfx++, 0, 0, 0, fb);
-    gDPImageRectangle(gfx++, OTRGetRectDimensionFromLeftEdge(0) << 2, 0 << 2, 0, 0,
-                      OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2, SCREEN_HEIGHT << 2, OTRGetGameRenderWidth(),
+    gDPImageRectangle(gfx++, OTRGetRectDimensionFromLeftEdge(0) << 2, OTRGetRectDimensionFromTopEdge(0) << 2, 0, 0,
+                      OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2,
+                      OTRGetRectDimensionFromBottomEdge(SCREEN_HEIGHT) << 2, OTRGetGameRenderWidth(),
                       OTRGetGameRenderHeight(), G_TX_RENDERTILE, OTRGetGameRenderWidth(), OTRGetGameRenderHeight());
 
     *gfxp = gfx;
@@ -174,10 +179,10 @@ void FB_DrawFromFramebufferScaled(Gfx** gfxp, s32 fb, u8 alpha, float scaleX, fl
     float x0 = gScreenWidth * 0.5f * scaleX;
     float y0 = gScreenHeight * 0.5f * scaleY;
 
-    gDPImageRectangle(gfx++, OTRGetRectDimensionFromLeftEdge(x0) << 2, (int)(y0) << 2, 0, 0,
+    gDPImageRectangle(gfx++, OTRGetRectDimensionFromLeftEdge(x0) << 2, OTRGetRectDimensionFromTopEdge(y0) << 2, 0, 0,
                       OTRGetRectDimensionFromRightEdge((float)(gScreenWidth - x0)) << 2,
-                      (int)((float)(gScreenHeight - y0)) << 2, OTRGetGameRenderWidth(), OTRGetGameRenderHeight(),
-                      G_TX_RENDERTILE, OTRGetGameRenderWidth(), OTRGetGameRenderHeight());
+                      OTRGetRectDimensionFromBottomEdge((float)(gScreenHeight - y0)) << 2, OTRGetGameRenderWidth(),
+                      OTRGetGameRenderHeight(), G_TX_RENDERTILE, OTRGetGameRenderWidth(), OTRGetGameRenderHeight());
 
     *gfxp = gfx;
 }
