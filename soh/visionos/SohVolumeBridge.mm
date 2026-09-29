@@ -362,3 +362,14 @@ void SohVolumeNoteHoverLayout(int rebuilt) {
     }
 #endif
 }
+
+void SohVolumeNoteCopySkipped(void) {
+#ifdef ENABLE_DEBUG_TOOLS
+    static uint32_t sSkipped = 0;
+    if (sSkipped++ % 90 == 0) {
+        char line[96];
+        snprintf(line, sizeof(line), "picture copy held back while the scene is not active (%u)", sSkipped);
+        Fast::ReportVisionOS(line);
+    }
+#endif
+}

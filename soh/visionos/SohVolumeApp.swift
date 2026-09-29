@@ -382,7 +382,11 @@ private final class VolumeState {
             eyeNote = nil
             note(line)
         }
-        gPictureCopy.run(queue: queue, texture: texture)
+        if phase == 2 {
+            gPictureCopy.run(queue: queue, texture: texture)
+        } else {
+            SohVolumeNoteCopySkipped()
+        }
     }
 }
 

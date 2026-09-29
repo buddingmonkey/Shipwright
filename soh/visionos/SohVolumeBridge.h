@@ -50,6 +50,8 @@ void* SohVolumeTexture(int eye);
 
 void SohVolumeNoteHoverLayout(int rebuilt);
 
+void SohVolumeNoteCopySkipped(void);
+
 #ifdef __cplusplus
 }
 #endif
