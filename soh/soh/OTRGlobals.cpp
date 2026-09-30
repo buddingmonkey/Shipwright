@@ -403,6 +403,9 @@ static spdlog::level::level_enum SohLogLevel() {
 
 static void ApplySohLogFormat() {
     auto logger = Ship::Context::GetRawInstance()->GetLogger();
+    if (logger == nullptr) {
+        return;
+    }
     logger->set_level(SohLogLevel());
     logger->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
 }
