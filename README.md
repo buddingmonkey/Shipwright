@@ -53,19 +53,19 @@ again.
 
 The app makes `oot.o2r` from your ROM on the first start. This is necessary one time only.
 
-* **Android, Quest, Galaxy XR:** copy the ROM into `Android/media/com.harbormasters.soh` in
-  internal storage (the Files app, a headset file manager or a PC over USB all reach it), then
-  start the app. Answer **Yes** to *"No O2R files found. Generate one now?"* and **Yes** to
-  *"ROMs found in application directory"*. If that folder holds no ROM, the system file picker
-  opens and takes a ROM from anywhere on the device, for example `Download`.
+* **Android, Quest, Galaxy XR:** copy the ROM anywhere on the device; `Download` is fine. Start
+  the app and answer **Yes** to *"No O2R files found. Generate one now?"*. The system file picker
+  opens. Choose the ROM.
 * **iPhone, iPad, Vision Pro:** start the app once. It makes a `Ship of Harkinian` folder under
   *On My iPhone* / *On My iPad* / *On My Apple Vision Pro* in the Files app. Copy the ROM into
   that folder, then answer **Yes** to *"No O2R files found. Generate one now?"* and **Yes** to
   *"ROMs found in application directory"*.
 
 After the extraction the app asks *"Extract another?"*. Answer **Yes** to add the other of vanilla
-and Master Quest, or **No** to play. Saves, `shipofharkinian.json` and the `mods` folder are in
-the same folder as the ROM.
+and Master Quest, or **No** to play.
+
+Saves, `shipofharkinian.json` and the `mods` folder are in `Android/media/com.harbormasters.soh`
+on Android and in the app's folder in the Files app on Apple devices.
 
 ### Controls
 

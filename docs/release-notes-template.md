@@ -16,17 +16,15 @@ supported versions are listed in
 A `.z64`, `.n64` or `.v64` file is accepted. The app asks for the ROM on the first start and makes
 `oot.o2r` from it. A Master Quest ROM is optional and makes `oot-mq.o2r`.
 
-## Where your files live
+## First start
 
-The app keeps its data in `Android/media/com.harbormasters.soh` in internal storage. The Files
-app, a file manager in a headset and a PC over USB all reach that folder. Your saves,
-`shipofharkinian.json` and the `mods` folder are in it.
+The app keeps your saves, `shipofharkinian.json` and the `mods` folder in
+`Android/media/com.harbormasters.soh` in internal storage.
 
-To load the game, copy your ROM into that folder and start the app. Answer **Yes** to *"No O2R
-files found. Generate one now?"*, then **Yes** to *"ROMs found in application directory"*. If the
-folder holds no ROM, the system document picker opens and takes a ROM from anywhere on the device.
-After the extraction, the app asks *"Extract another?"*: answer **Yes** to add the other of
-vanilla and Master Quest, or **No** to play.
+To load the game, copy your ROM anywhere on the device (`Download` is fine) and start the app.
+Answer **Yes** to *"No O2R files found. Generate one now?"*. The system file picker opens; choose
+the ROM. After the extraction, the app asks *"Extract another?"*: answer **Yes** to add the other
+of vanilla and Master Quest, or **No** to play.
 
 ## Updates
 

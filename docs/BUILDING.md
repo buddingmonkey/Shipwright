@@ -409,8 +409,8 @@ signature cannot update an installed one, and an uninstall deletes the saves. To
 own key, pass `-PkeystoreFile=... -PkeystorePassword=... -PkeyAlias=... -PkeyPassword=...`.
 `-PversionCode=N` sets the version code; Android refuses an update with a lower one.
 
-The app keeps its data in `Android/media/com.harbormasters.soh`. Copy the ROM there, or pick it
-with the system file picker at the first start.
+At the first start, answer **Yes** to *"No O2R files found. Generate one now?"* and choose the ROM
+in the system file picker. The app keeps its data in `Android/media/com.harbormasters.soh`.
 
 ## Switch
 1. Requires that your build machine is setup with the tools necessary for your platform above
