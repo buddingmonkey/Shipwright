@@ -6,9 +6,14 @@
 
 #include <ship/utils/StringHelper.h>
 #include <ship/Context.h>
+#include <zip.h>
+#ifdef INCLUDE_MPQ_SUPPORT
+#include <StormLib.h>
+#endif
 
 #include "mod_menu.h"
 #include "soh/Enhancements/audio/OotrsArchive.h"
+#include "soh/FilePicker.h"
 #include "soh/OTRGlobals.h"
 #include "soh/util.h"
 #include "soh/SohGui/MenuTypes.h"
@@ -292,6 +297,85 @@ void UpdateModFiles(bool init = false, bool reset = false) {
     }
 }
 
+static bool IsReadableModArchive(const std::filesystem::path& path) {
+#ifdef INCLUDE_MPQ_SUPPORT
+    if (StringHelper::IEquals(path.extension().generic_string(), ".otr")) {
+        HANDLE mpq = nullptr;
+        if (!SFileOpenArchive(path.string().c_str(), 0, MPQ_OPEN_READ_ONLY, &mpq)) {
+            return false;
+        }
+        SFileCloseArchive(mpq);
+        return true;
+    }
+#endif
+    zip_t* zip = zip_open(path.string().c_str(), ZIP_RDONLY, nullptr);
+    if (zip == nullptr) {
+        return false;
+    }
+    zip_close(zip);
+    return true;
+}
+
+static void CopyModIntoModsFolder(const std::filesystem::path& source, const std::filesystem::path& target) {
+    std::error_code ec;
+    std::filesystem::path partial = target;
+    partial += ".part";
+    std::filesystem::create_directories(target.parent_path(), ec);
+    std::filesystem::copy_file(source, partial, std::filesystem::copy_options::overwrite_existing, ec);
+    if (!ec) {
+        std::filesystem::rename(partial, target, ec);
+    }
+    if (ec) {
+        std::error_code removeEc;
+        std::filesystem::remove(partial, removeEc);
+        SohGui::RegisterPopup("Could Not Add Mod", "Could not copy the file into the mods folder.\n\n" + ec.message());
+        return;
+    }
+    if (SohFilePicker::IsStagedCopy(source)) {
+        std::filesystem::remove(source, ec);
+    }
+    UpdateModFiles(false, true);
+    SohGui::RegisterPopup("Mod Added", target.filename().generic_string() +
+                                           " is in the mods folder.\n\nClose and open Ship of Harkinian again to "
+                                           "load it.");
+}
+
+static void AcceptPickedModFile(const std::filesystem::path& source) {
+    std::error_code ec;
+    const std::string name = source.filename().generic_string();
+    const std::string extension = source.extension().generic_string();
+    if (!std::filesystem::is_regular_file(source, ec)) {
+        SohGui::RegisterPopup("Could Not Add Mod", "Could not read " + name + ".");
+        return;
+    }
+    if (!IsValidExtension(extension) && !IsOotrsExtension(extension)) {
+        SohGui::RegisterPopup("Not a Mod File", name + " is not a mod file.\nA mod file is .o2r, .otr or .ootrs.");
+        return;
+    }
+    if (!IsReadableModArchive(source)) {
+        SohGui::RegisterPopup("Not a Mod File", name + " is not a correct mod archive.");
+        return;
+    }
+    const std::filesystem::path target =
+        std::filesystem::path(Ship::Context::GetPathRelativeToAppDirectory("mods", appShortName)) / source.filename();
+    if (std::filesystem::exists(target, ec)) {
+        SohGui::RegisterPopup(
+            "Mod Already Exists", name + " is already in the mods folder.\n\nReplace it?", "Replace", "Cancel",
+            [source, target]() { CopyModIntoModsFolder(source, target); }, nullptr);
+        return;
+    }
+    CopyModIntoModsFolder(source, target);
+}
+
+static void RequestModFileImport() {
+    SohFilePicker::PickFile("Select a mod file", { "Mods", "*.o2r *.otr *.ootrs" },
+                            [](std::optional<std::filesystem::path> picked) {
+                                if (picked.has_value()) {
+                                    AcceptPickedModFile(*picked);
+                                }
+                            });
+}
+
 extern "C" void gfx_texture_cache_clear();
 
 void EnableMod(std::string file) {
@@ -508,6 +592,27 @@ void ModMenuWindow::DrawElement() {
     //     UpdateModFiles();
     // }
     // ImGui::SameLine();
+    if (SohFilePicker::IsAvailable()) {
+        if (UIWidgets::Button(
+                "Add Mod from File",
+                UIWidgets::ButtonOptions({ { .tooltip = "Select a mod file and copy it into the mods folder.",
+                                             .disabled = editing,
+                                             .disabledTooltip = "Currently editing..." } })
+                    .Size(UIWidgets::Sizes::Inline)
+                    .Color(THEME_COLOR))) {
+            RequestModFileImport();
+        }
+    } else {
+        UIWidgets::Button(
+            "Add Mod from File",
+            UIWidgets::ButtonOptions({ { .disabled = true,
+                                         .disabledTooltip = "This device has no file picker. Put the mod file in " +
+                                                            SohFilePicker::FilesAppFolder() +
+                                                            " > mods. Then close and open Ship of Harkinian again." } })
+                .Size(UIWidgets::Sizes::Inline)
+                .Color(THEME_COLOR));
+    }
+    ImGui::SameLine();
     if (UIWidgets::Button("Edit",
                           UIWidgets::ButtonOptions({ { .disabled = editing, .disabledTooltip = "Already editing..." } })
                               .Size(UIWidgets::Sizes::Inline)
