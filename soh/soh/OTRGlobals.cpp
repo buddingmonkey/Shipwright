@@ -2202,6 +2202,7 @@ int PaceSubframes(int count, int fps) {
     static bool wasShort = false;
     static double lateRatio = 1.0;
     static auto lastTick = std::chrono::steady_clock::time_point();
+    static int lastCount = 0;
 
     if (!SoH::IsHeadsetWindow() || fps <= 0) {
         sPacing.active = false;
@@ -2231,7 +2232,14 @@ int PaceSubframes(int count, int fps) {
 
     if (allowed < 1) {
         allowed = count;
+    } else if (lastCount > 0 && count != lastCount) {
+        allowed = (allowed * count + lastCount / 2) / lastCount;
+        sPacing.asked = 0;
+        probeCountdown = PACING_PROBE_TICKS;
+        lateRatio = 1.0;
+        wasShort = false;
     }
+    lastCount = count;
     const bool isShort = sPacing.asked > 0 && (sPacing.drawn < sPacing.asked || lateRatio > PACING_LATE_RATIO);
     if (isShort && wasShort) {
         allowed = sPacing.asked - 1;
