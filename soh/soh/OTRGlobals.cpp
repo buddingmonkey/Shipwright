@@ -848,6 +848,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                     }
                     case PS_FIRST: {
                         promptStep = PS_WAIT;
+#ifdef __IOS__
+                        SohGui::RegisterPopup("No ROM Found",
+                                              "Ship of Harkinian did not find a ROM.\n\nPut your ROM file in\n" +
+                                                  SohFilePicker::FilesAppFolder() + ".\n\nThen select Search Again.",
+                                              "Search Again", "", [&]() { promptStep = PS_LOCAL; });
+                        continue;
+#endif
                         extract.PickRomMatchingType(RomSearchMode::Both, [&](bool picked) {
                             if (!picked) {
                                 promptStep = PS_FILE_CHECK;
