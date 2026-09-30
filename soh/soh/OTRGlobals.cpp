@@ -285,10 +285,10 @@ static bool VerifyArchiveVersion(OTRVersion version);
 std::string portArchivePath = "";
 static bool sohArchiveVersionMatch = false;
 
+static std::atomic<bool> sAppTerminating{ false };
 #ifdef SOH_MOBILE
 static std::atomic<bool> sAppOnScreen{ true };
 static std::atomic<bool> sWindowMinimized{ false };
-static std::atomic<bool> sAppTerminating{ false };
 #ifdef __ANDROID__
 static std::atomic<bool> sBackPressed{ false };
 #endif
