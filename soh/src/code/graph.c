@@ -510,6 +510,7 @@ void Graph_ThreadEntry(void* arg0) {
     while (WindowIsRunning()) {
         RunFrame();
     }
+    SoH_NoteShutdown("the graphics loop ended");
 }
 
 void* Graph_Alloc(GraphicsContext* gfxCtx, size_t size) {
