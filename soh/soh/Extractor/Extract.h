@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <stdint.h>
 #include <string>
 #include <memory>
@@ -50,6 +51,9 @@ class Extractor {
     void ShowCompressedErrorBox() const;
     int ShowRomPickBox(uint32_t verCrc) const;
     bool ManuallySearchForRom();
+    bool ReadPickedRom();
+    bool IsWrongType(RomSearchMode searchMode) const;
+    int ShowWrongTypeBox(RomSearchMode searchMode) const;
 
   public:
     // TODO create some kind of abstraction for message boxes.
@@ -57,6 +61,7 @@ class Extractor {
     static void ShowErrorBox(const char* title, const char* text);
     bool IsMasterQuest() const;
     bool ManuallySearchForRomMatchingType(RomSearchMode searchMode);
+    void PickRomMatchingType(RomSearchMode searchMode, std::function<void(bool)> onDone);
 
     void SetSearchPath(const std::string& path);
     void GetRoms(std::vector<std::string>& roms);
