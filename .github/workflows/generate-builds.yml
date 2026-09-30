@@ -9,11 +9,19 @@ jobs:
 
   generate-soh-otr:
     runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v7
       with:
         submodules: true
+    - name: Extract Project Version
+      id: extract_version
+      run: |
+        VERSION=$(grep -oP '^\s*project\s*\([^)]*VERSION\s+\K[0-9\.]+' CMakeLists.txt)
+        echo "Found version: $VERSION"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
     - name: Configure ccache
       uses: hendrikmuhs/ccache-action@v1.2.23
       with:
@@ -314,3 +322,39 @@ jobs:
       with:
         name: soh-android
         path: build-android/soh-release.apk
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [generate-soh-otr, build-macos, build-linux, build-windows, build-android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Git Checkout
+      uses: actions/checkout@v7
+    - name: Check the tag against the project version
+      run: |
+        TAG="${GITHUB_REF_NAME#v}"
+        PROJECT="${{ needs.generate-soh-otr.outputs.version }}"
+        test "${TAG%%-*}" = "$PROJECT" || {
+          echo "Tag $GITHUB_REF_NAME does not agree with the CMakeLists version $PROJECT"
+          exit 1
+        }
+    - name: Download the Android build
+      uses: actions/download-artifact@v8
+      with:
+        name: soh-android
+        path: dist
+    - name: Stage the release files
+      run: |
+        set -eu
+        VER="${GITHUB_REF_NAME#v}"
+        mkdir -p dist/release
+        mv dist/soh-release.apk "dist/release/SoH-$VER-android-arm64.apk"
+        ls -l dist/release
+    - uses: softprops/action-gh-release@v2
+      with:
+        files: dist/release/*
+        draft: true
+        generate_release_notes: true
+        body_path: docs/release-notes-template.md
