@@ -51,11 +51,11 @@ public class SohActivity extends SDLActivity {
         "mods",
     };
     private static final String INTERNAL_ROOT = "assets";
-    private static final int REQUEST_PICK_ROM = 1;
+    private static final int REQUEST_PICK_FILE = 1;
     private static final String IMPORT_DIR = "import";
-    private static final String FALLBACK_IMPORT_NAME = "rom.z64";
+    private static final String FALLBACK_IMPORT_NAME = "import.tmp";
 
-    private volatile boolean romPickPending = false;
+    private volatile boolean filePickPending = false;
     private volatile int softKeyboardResult = -1;
     private final CountDownLatch assetsReady = new CountDownLatch(1);
 
@@ -130,9 +130,9 @@ public class SohActivity extends SDLActivity {
 
     @Override
     protected void onDestroy() {
-        if (romPickPending) {
-            Log.i(TAG, "Releasing the pending ROM pick for shutdown");
-            deliverPickedRom(null);
+        if (filePickPending) {
+            Log.i(TAG, "Releasing the pending file pick for shutdown");
+            deliverPickedFile(null);
         }
         boolean relaunch = isChangingConfigurations();
         super.onDestroy();
@@ -144,17 +144,17 @@ public class SohActivity extends SDLActivity {
     }
 
     public void openFilePicker() {
-        romPickPending = true;
+        filePickPending = true;
         runOnUiThread(() -> {
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             pick.addCategory(Intent.CATEGORY_OPENABLE);
             pick.setType("*/*");
-            Log.i(TAG, "Opening the system ROM picker");
+            Log.i(TAG, "Opening the system file picker");
             try {
-                startActivityForResult(pick, REQUEST_PICK_ROM);
+                startActivityForResult(pick, REQUEST_PICK_FILE);
             } catch (Exception e) {
                 Log.e(TAG, "No document picker available", e);
-                deliverPickedRom(null);
+                deliverPickedFile(null);
             }
         });
     }
@@ -162,33 +162,39 @@ public class SohActivity extends SDLActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQUEST_PICK_ROM) {
+        if (requestCode != REQUEST_PICK_FILE) {
             return;
         }
         Uri source = (resultCode == RESULT_OK && data != null) ? data.getData() : null;
         if (source == null) {
-            Log.i(TAG, "ROM picker canceled");
-            deliverPickedRom(null);
+            Log.i(TAG, "File picker canceled");
+            deliverPickedFile(null);
             return;
         }
-        new Thread(() -> deliverPickedRom(importPickedRom(source)), "RomImport").start();
+        new Thread(() -> deliverPickedFile(importPickedFile(source)), "FileImport").start();
     }
 
-    private void deliverPickedRom(String path) {
-        romPickPending = false;
+    private void deliverPickedFile(String path) {
+        filePickPending = false;
         nativeFilePicked(path);
     }
 
-    private String importPickedRom(Uri source) {
-        File dir = new File(getCacheDir(), IMPORT_DIR);
-        String name = pickedRomName(source);
+    private String importPickedFile(Uri source) {
+        File dir = new File(getFilesDir(), IMPORT_DIR);
+        File[] previous = dir.listFiles();
+        if (previous != null) {
+            for (File file : previous) {
+                file.delete();
+            }
+        }
+        String name = pickedFileName(source);
         File target = new File(dir, name);
         File partial = new File(target.getPath() + ".part");
         try {
             if (!dir.isDirectory() && !dir.mkdirs()) {
                 throw new IOException("Could not create " + dir);
             }
-            Log.i(TAG, "Importing picked ROM " + source + " as " + name);
+            Log.i(TAG, "Importing picked file " + source + " as " + name);
             try (InputStream in = getContentResolver().openInputStream(source)) {
                 if (in == null) {
                     throw new IOException("Could not open " + source);
@@ -204,7 +210,7 @@ public class SohActivity extends SDLActivity {
             if (!partial.renameTo(target)) {
                 throw new IOException("Could not move " + partial + " into place");
             }
-            Log.i(TAG, "Imported picked ROM to " + target);
+            Log.i(TAG, "Imported picked file to " + target);
             return target.getAbsolutePath();
         } catch (IOException e) {
             Log.e(TAG, "Could not import " + source, e);
@@ -213,7 +219,7 @@ public class SohActivity extends SDLActivity {
         }
     }
 
-    private String pickedRomName(Uri source) {
+    private String pickedFileName(Uri source) {
         String name = null;
         try (Cursor cursor = getContentResolver().query(source, new String[] { OpenableColumns.DISPLAY_NAME }, null,
                                                          null, null)) {

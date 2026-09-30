@@ -64,6 +64,7 @@
 #endif
 
 #include <fast/interpreter.h>
+#include "soh/FilePicker.h"
 #include "soh/ShaderPrewarm.h"
 #include "soh/XrWindow.h"
 
@@ -365,6 +366,7 @@ static int AppLifecycleWatch(void* userdata, SDL_Event* event) {
 static void ParkWhileOffScreen() {
     while ((!sAppOnScreen || sWindowMinimized) && WindowIsRunning() && !SDL_HasEvent(SDL_QUIT)) {
         SDL_PumpEvents();
+        SDL_FlushEvents(SDL_APP_WILLENTERBACKGROUND, SDL_APP_DIDENTERBACKGROUND);
         SDL_Delay(50);
     }
 }
@@ -651,6 +653,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 #endif
 
     while (!extractDone) {
+        SohFilePicker::Pump();
         if (SohGui::PopupsQueued() > 0 || extractionTask.has_value()) {
             goto render;
         }
@@ -844,17 +847,20 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         continue;
                     }
                     case PS_FIRST: {
-                        if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
-                            promptStep = PS_FILE_CHECK;
-                            continue;
-                        }
-                        extractionTask = threadPool->submit_task([&]() -> void {
-                            extract.CallTorch(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
-                                              &extractCount, &totalExtract);
-                            generatedIsMQ = extract.IsMasterQuest();
-                            promptStep = PS_SECOND;
-                            extractCount = 0;
-                            totalExtract = 0;
+                        promptStep = PS_WAIT;
+                        extract.PickRomMatchingType(RomSearchMode::Both, [&](bool picked) {
+                            if (!picked) {
+                                promptStep = PS_FILE_CHECK;
+                                return;
+                            }
+                            extractionTask = threadPool->submit_task([&]() -> void {
+                                extract.CallTorch(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
+                                                  &extractCount, &totalExtract);
+                                generatedIsMQ = extract.IsMasterQuest();
+                                promptStep = PS_SECOND;
+                                extractCount = 0;
+                                totalExtract = 0;
+                            });
                         });
                         continue;
                     }
@@ -862,18 +868,22 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         SohGui::RegisterPopup(
                             "Extraction Complete", "ROM Extracted. Extract another?", "Yes", "No",
                             [&]() {
-                                if (!extract.ManuallySearchForRomMatchingType(generatedIsMQ ? RomSearchMode::Vanilla
-                                                                                            : RomSearchMode::MQ)) {
-                                    extractStep = ES_VERIFY;
-                                } else {
-                                    extractionTask = threadPool->submit_task([&]() -> void {
-                                        extract.CallTorch(installPath, Ship::Context::GetAppDirectoryPath(appShortName),
-                                                          &extractCount, &totalExtract);
-                                        extractStep = ES_VERIFY;
-                                        extractCount = 0;
-                                        totalExtract = 0;
+                                promptStep = PS_WAIT;
+                                extract.PickRomMatchingType(
+                                    generatedIsMQ ? RomSearchMode::Vanilla : RomSearchMode::MQ, [&](bool picked) {
+                                        if (!picked) {
+                                            promptStep = PS_SECOND;
+                                            return;
+                                        }
+                                        extractionTask = threadPool->submit_task([&]() -> void {
+                                            extract.CallTorch(installPath,
+                                                              Ship::Context::GetAppDirectoryPath(appShortName),
+                                                              &extractCount, &totalExtract);
+                                            extractStep = ES_VERIFY;
+                                            extractCount = 0;
+                                            totalExtract = 0;
+                                        });
                                     });
-                                }
                             },
                             [&]() { extractStep = ES_VERIFY; });
                         continue;
@@ -2289,6 +2299,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
     OTRGlobals::Instance->ScaleImGui();
+    SohFilePicker::Pump();
 
 #ifdef SOH_MOBILE
     ParkWhileOffScreen();

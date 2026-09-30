@@ -10,6 +10,7 @@
 #include "spdlog/spdlog.h"
 #include <ship/utils/binarytools/BitConverter.h>
 #include "soh/ShipUtils.h"
+#include "soh/FilePicker.h"
 #include "variables.h"
 
 #ifdef unix
@@ -52,13 +53,6 @@
 #include <filesystem>
 #include <unordered_map>
 #include <string>
-
-#ifdef __ANDROID__
-#include <jni.h>
-#include <mutex>
-#include <condition_variable>
-#include <SDL2/SDL_system.h>
-#endif
 
 extern "C" uint32_t CRC32C(unsigned char* data, size_t dataSize);
 
@@ -267,63 +261,6 @@ void Extractor::GetRoms(std::vector<std::string>& roms) {
 #endif
 }
 
-#ifdef __ANDROID__
-static std::string sImportedRomPath;
-static std::mutex sPickMutex;
-static std::condition_variable sPickCv;
-static bool sPickReady = false;
-static std::string sPickPath;
-
-extern "C" JNIEXPORT void JNICALL Java_com_harbormasters_soh_SohActivity_nativeFilePicked(JNIEnv* env, jclass,
-                                                                                          jstring path) {
-    std::string picked;
-    if (path != nullptr) {
-        const char* chars = env->GetStringUTFChars(path, nullptr);
-        if (chars != nullptr) {
-            picked = chars;
-            env->ReleaseStringUTFChars(path, chars);
-        }
-    }
-    {
-        std::lock_guard<std::mutex> lock(sPickMutex);
-        sPickPath = std::move(picked);
-        sPickReady = true;
-    }
-    sPickCv.notify_one();
-}
-
-static bool ShowAndroidFilePicker(std::string& outPath) {
-    JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
-    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
-    if (env == nullptr || activity == nullptr) {
-        SPDLOG_ERROR("No Android activity to open the file picker on");
-        return false;
-    }
-    jclass activityClass = env->GetObjectClass(activity);
-    jmethodID open = env->GetMethodID(activityClass, "openFilePicker", "()V");
-    if (open == nullptr) {
-        env->ExceptionClear();
-        SPDLOG_ERROR("SohActivity.openFilePicker is missing");
-        env->DeleteLocalRef(activityClass);
-        env->DeleteLocalRef(activity);
-        return false;
-    }
-    {
-        std::lock_guard<std::mutex> lock(sPickMutex);
-        sPickReady = false;
-        sPickPath.clear();
-    }
-    env->CallVoidMethod(activity, open);
-    env->DeleteLocalRef(activityClass);
-    env->DeleteLocalRef(activity);
-
-    std::unique_lock<std::mutex> lock(sPickMutex);
-    sPickCv.wait(lock, [] { return sPickReady; });
-    outPath = std::move(sPickPath);
-    return !outPath.empty();
-}
-#endif
-
 bool Extractor::GetRomPathFromBox() {
 #ifdef _WIN32
     OPENFILENAMEA box = { 0 };
@@ -363,12 +300,7 @@ bool Extractor::GetRomPathFromBox() {
     }
     mCurrentRomPath = nameBuffer;
 #elif defined(__ANDROID__)
-    std::string picked;
-    if (!ShowAndroidFilePicker(picked)) {
-        return false;
-    }
-    mCurrentRomPath = picked;
-    sImportedRomPath = picked;
+    return false;
 #else
     auto selection = pfd::open_file("Select a file", mSearchPath, { "N64 Roms", "*.z64 *.n64 *.v64" }).result();
 
@@ -451,9 +383,17 @@ bool Extractor::ValidateRom(bool skipCrcTextBox) {
 }
 
 bool Extractor::ManuallySearchForRom() {
+    if (!GetRomPathFromBox()) {
+        return false;
+    }
+    return ReadPickedRom();
+}
+
+bool Extractor::ReadPickedRom() {
     std::ifstream inFile;
 
-    if (!GetRomPathFromBox()) {
+    if (mCurRomSize > MB64) {
+        ShowSizeErrorBox();
         return false;
     }
 
@@ -474,20 +414,60 @@ bool Extractor::ManuallySearchForRom() {
     return true;
 }
 
-bool Extractor::ManuallySearchForRomMatchingType(RomSearchMode searchMode) {
-    if (!ManuallySearchForRom()) {
-        return false;
-    }
+bool Extractor::IsWrongType(RomSearchMode searchMode) const {
+    return (searchMode == RomSearchMode::Vanilla && IsMasterQuest()) ||
+           (searchMode == RomSearchMode::MQ && !IsMasterQuest());
+}
 
+int Extractor::ShowWrongTypeBox(RomSearchMode searchMode) const {
     char msgBuf[150];
     snprintf(
         msgBuf, 150,
         "The selected rom does not match the expected game type\nExpected type: %s.\n\nDo you want to search again?",
         searchMode == RomSearchMode::MQ ? "Master Quest" : "Vanilla");
+    return ShowYesNoBox("Wrong Game Type", msgBuf);
+}
 
-    while ((searchMode == RomSearchMode::Vanilla && IsMasterQuest()) ||
-           (searchMode == RomSearchMode::MQ && !IsMasterQuest())) {
-        int ret = ShowYesNoBox("Wrong Game Type", msgBuf);
+static void RemoveStagedCopy(const std::string& path) {
+    if (SohFilePicker::IsStagedCopy(path)) {
+        std::error_code ec;
+        std::filesystem::remove(path, ec);
+    }
+}
+
+void Extractor::PickRomMatchingType(RomSearchMode searchMode, std::function<void(bool)> onDone) {
+#ifdef __ANDROID__
+    SohFilePicker::PickFile("Select a file", { "N64 Roms", "*.z64 *.n64 *.v64" },
+                            [this, searchMode, onDone](std::optional<std::filesystem::path> picked) {
+                                if (!picked.has_value()) {
+                                    onDone(false);
+                                    return;
+                                }
+                                SetRomInfo(picked->string());
+                                const bool read = ReadPickedRom();
+                                if (!read || IsWrongType(searchMode)) {
+                                    RemoveStagedCopy(mCurrentRomPath);
+                                    if (read && ShowWrongTypeBox(searchMode) == IDYES) {
+                                        PickRomMatchingType(searchMode, onDone);
+                                    } else {
+                                        onDone(false);
+                                    }
+                                    return;
+                                }
+                                onDone(true);
+                            });
+#else
+    onDone(ManuallySearchForRomMatchingType(searchMode));
+#endif
+}
+
+bool Extractor::ManuallySearchForRomMatchingType(RomSearchMode searchMode) {
+    if (!ManuallySearchForRom()) {
+        return false;
+    }
+
+    while (IsWrongType(searchMode)) {
+        int ret = ShowWrongTypeBox(searchMode);
         switch (ret) {
             case IDYES:
                 if (!ManuallySearchForRom()) {
@@ -721,13 +701,9 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
 
     std::filesystem::remove_all(tempdir, ec);
 
-#ifdef __ANDROID__
-    if (success && !sImportedRomPath.empty() && mCurrentRomPath == sImportedRomPath) {
-        std::error_code importEc;
-        std::filesystem::remove(sImportedRomPath, importEc);
-        sImportedRomPath.clear();
+    if (success) {
+        RemoveStagedCopy(mCurrentRomPath);
     }
-#endif
 
     return success;
 }
