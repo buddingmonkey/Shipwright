@@ -310,7 +310,7 @@ Xcode failures reliably.
 
 ```bash
 # Clone the repo with submodules
-git clone --recursive https://github.com/HarbourMasters/Shipwright.git
+git clone --recursive -b xr-integration https://github.com/buddingmonkey/Shipwright.git
 cd Shipwright
 
 # Generate the Xcode project. CMAKE_IGNORE_PREFIX_PATH keeps Homebrew/MacPorts
@@ -343,6 +343,74 @@ extraction far slower; change `IOS_SCHEME_CONFIGURATION` only when you need a de
 
 For the Simulator, configure a second build directory with `-DPLATFORM=SIMULATORARM64`
 and install the built app with `xcrun simctl install`.
+
+## visionOS (Apple Vision Pro)
+
+Requires a Mac with Xcode 26 or newer and the visionOS SDK, and CMake 3.28 or newer. The app is a
+native SwiftUI and RealityKit shell that shows the game in a volumetric window in the Shared
+Space. The renderer is Metal. `IOS_DEVELOPMENT_TEAM` and `PROJECT_ID` work as they do for iOS.
+
+**CMake generates the Xcode project. Xcode builds it.** As on iOS, use CMake once to make the
+project, then work in Xcode.
+
+```bash
+git clone --recursive -b xr-integration https://github.com/buddingmonkey/Shipwright.git
+cd Shipwright
+
+cmake -S . -B build-visionos -G Xcode \
+  -DCMAKE_TOOLCHAIN_FILE=CMake/ios.toolchain.cmake \
+  -DPLATFORM=VISIONOS \
+  -DDEPLOYMENT_TARGET=2.0 \
+  -DCMAKE_IGNORE_PREFIX_PATH="/opt/homebrew;/usr/local;/opt/local" \
+  -DPROJECT_ID=com.yourname.soh \
+  -DIOS_DEVELOPMENT_TEAM=YOURTEAMID
+
+cmake --build build-visionos --config Release --target GenerateSohOtr
+
+open build-visionos/Ship.xcodeproj
+```
+
+In Xcode: select the **soh** scheme, choose your Vision Pro, and press **Run** (⌘R). Pair the
+headset first under *Window > Devices and Simulators*.
+
+Give the app a ROM as on iOS: copy it into the app's folder in the **Files** app (On My Apple
+Vision Pro > Ship of Harkinian).
+
+* **A paired gamepad is necessary to play.** Look and pinch drive the menu. The **Menu** button
+  under the volume opens it.
+* The system window bar moves and resizes the volume. *Settings > Graphics > Diorama Depth* sets
+  the depth of the world behind the window.
+* `-DPLATFORM=SIMULATOR_VISIONOS` makes a Simulator project, which needs no signing. The
+  Simulator shows one view, so it cannot show the stereo result.
+
+## Android, Meta Quest and Galaxy XR
+
+One APK serves Android phones and tablets, Meta Quest 3 / 3S and Samsung Galaxy XR. Gradle drives
+the native CMake build and also builds the host asset tools that make `soh.o2r`, so first install
+the host dependencies of your platform from the [Linux](#linux) or [macOS](#macos) section.
+
+Requires JDK 17 and the Android SDK with NDK `29.0.14206865` and CMake `3.31.6` (install both
+with the SDK Manager or `sdkmanager`). Point Gradle at the SDK with `ANDROID_HOME` or with
+`sdk.dir=` in `android/local.properties`.
+
+```bash
+git clone --recursive -b xr-integration https://github.com/buddingmonkey/Shipwright.git
+cd Shipwright/android
+
+# arm64-v8a is enough for every phone and headset; the default also builds x86_64 for the emulator
+./gradlew --no-daemon assembleRelease -Pabis=arm64-v8a
+
+# The APK is build-android/soh-release.apk
+adb install -r ../build-android/soh-release.apk
+```
+
+Without a keystore the release APK is signed with the debug key. An APK with a different
+signature cannot update an installed one, and an uninstall deletes the saves. To sign with your
+own key, pass `-PkeystoreFile=... -PkeystorePassword=... -PkeyAlias=... -PkeyPassword=...`.
+`-PversionCode=N` sets the version code; Android refuses an update with a lower one.
+
+The app keeps its data in `Android/media/com.harbormasters.soh`. Copy the ROM there, or pick it
+with the system file picker at the first start.
 
 ## Switch
 1. Requires that your build machine is setup with the tools necessary for your platform above

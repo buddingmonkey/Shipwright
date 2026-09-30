@@ -6,6 +6,79 @@
 
 If you're having any trouble after reading through this `README`, feel free to ask for help in the Support text channels. Please keep in mind that we do not condone piracy.
 
+# Mobile and XR fork
+
+This fork adds platforms that the upstream Ship of Harkinian does not build:
+
+| Platform | How it plays |
+| --- | --- |
+| **Android** phone and tablet | on-screen touch controls or a gamepad |
+| **Meta Quest 3 / 3S** | the game in a window in your room, Touch controllers |
+| **Samsung Galaxy XR** | the game in a window in your room, a paired gamepad |
+| **iPhone / iPad** | on-screen touch controls or a gamepad |
+| **Apple Vision Pro** | the game in a volume in the Shared Space, a paired gamepad |
+
+**On Windows, Linux or macOS, use [HarbourMasters/Shipwright](https://github.com/HarbourMasters/Shipwright/releases)
+instead.** That repository is the canonical port.
+
+### 1. Get a supported ROM
+
+Check your dump at <https://ship.equipment/>, or compare its SHA-1 with
+[docs/supportedHashes.json](docs/supportedHashes.json). A `.z64`, `.n64` or `.v64` file is
+accepted. A Master Quest ROM is optional.
+
+### 2. Install the app
+
+**Android, Meta Quest and Galaxy XR:** get `SoH-<version>-android-arm64.apk` from
+[Releases](../../releases). One APK covers all three. It is `arm64-v8a` only, so it runs on every
+shipping phone and headset but not on an x86_64 emulator.
+
+* **Phone or tablet:** copy the APK to the device and open it, or run `adb install -r <apk>`.
+* **Meta Quest 3 / 3S:** turn on developer mode for the headset in the Meta Horizon phone app,
+  connect by USB, accept the prompt in the headset, then run `adb install -r <apk>`. The app is in
+  the library under *Unknown Sources*.
+* **Samsung Galaxy XR:** turn on Developer options and USB debugging in Settings, then run
+  `adb install -r <apk>`.
+
+To update, install the new APK over the old one. **Do not uninstall first.** An uninstall deletes
+your saves, your settings and `oot.o2r`.
+
+**iPhone, iPad and Apple Vision Pro:** Apple permits no sideloading, so there is no download.
+Build the app on a Mac and run it on your device from Xcode. See
+[iOS](docs/BUILDING.md#ios) and [visionOS](docs/BUILDING.md#visionos-apple-vision-pro) in
+docs/BUILDING.md. A free Apple ID is enough. Its profile expires after 7 days, and you then build
+again.
+
+### 3. Give the app the ROM
+
+The app makes `oot.o2r` from your ROM on the first start. This is necessary one time only.
+
+* **Android, Quest, Galaxy XR:** copy the ROM into `Android/media/com.harbormasters.soh` in
+  internal storage (the Files app, a headset file manager or a PC over USB all reach it), then
+  start the app. Answer **Yes** to *"No O2R files found. Generate one now?"* and **Yes** to
+  *"ROMs found in application directory"*. If that folder holds no ROM, the system file picker
+  opens and takes a ROM from anywhere on the device, for example `Download`.
+* **iPhone, iPad, Vision Pro:** start the app once. It makes a `Ship of Harkinian` folder under
+  *On My iPhone* / *On My iPad* / *On My Apple Vision Pro* in the Files app. Copy the ROM into
+  that folder, then answer **Yes** to *"No O2R files found. Generate one now?"* and **Yes** to
+  *"ROMs found in application directory"*.
+
+After the extraction the app asks *"Extract another?"*. Answer **Yes** to add the other of vanilla
+and Master Quest, or **No** to play. Saves, `shipofharkinian.json` and the `mods` folder are in
+the same folder as the ROM.
+
+### Controls
+
+* **Phone and tablet:** on-screen touch controls. They hide while a gamepad is connected.
+* **Meta Quest:** the Touch controllers play the game.
+* **Galaxy XR and Vision Pro:** pair a gamepad to play.
+* In a headset, hands (look and pinch on Vision Pro) point at the menu and move the window. They
+  do not play the game. Open the menu with the button on the window (the **Menu** button under the
+  volume on Vision Pro). *Settings > Graphics > Diorama Depth* sets how deep the world looks
+  behind the window.
+
+---
+
 # Quick Start
 
 The Ship does not include any copyrighted assets.  You are required to provide a supported copy of the game.
