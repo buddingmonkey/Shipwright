@@ -291,9 +291,8 @@ enum InsetEdge {
 std::atomic<int> sInsetPx[INSET_COUNT] = {};
 #endif
 
-Insets SafeArea(float pointHeight, KeepOuts* keepOuts, KeepOuts* divisions) {
+Insets SafeArea(float pointHeight, KeepOuts* keepOuts) {
     *keepOuts = {};
-    *divisions = {};
 #if defined(__ANDROID__)
     if (pointHeight <= 0.0f) {
         return {};
@@ -311,11 +310,6 @@ Insets SafeArea(float pointHeight, KeepOuts* keepOuts, KeepOuts* divisions) {
     for (int i = 0; i < keepOuts->count; i++) {
         const TouchControlsKeepOut& k = area.keepOuts[i];
         keepOuts->rects[i] = { k.left, k.top, k.right, k.bottom };
-    }
-    divisions->count = std::clamp(area.divisionCount, 0, std::min(kMaxKeepOuts, kTouchControlsMaxKeepOuts));
-    for (int i = 0; i < divisions->count; i++) {
-        const TouchControlsKeepOut& d = area.divisions[i];
-        divisions->rects[i] = { d.left, d.top, d.right, d.bottom };
     }
 #else
     (void)pointHeight;
@@ -482,7 +476,6 @@ struct LayoutKey {
     float margin = 0.0f;
     Insets insets;
     KeepOuts keepOuts;
-    KeepOuts divisions;
     int device = 0;
     int dpad = 0;
     int mirror = 0;
@@ -496,8 +489,6 @@ constexpr float kMinSize = 0.4f;
 constexpr float kPortraitAspect = 1.0f;
 constexpr float kGameAspectStandard = 4.0f / 3.0f;
 constexpr float kGameAspectWide = 16.0f / 9.0f;
-constexpr float kMinGameBottom = 0.25f;
-constexpr float kDivisionMinWidth = 0.8f;
 
 Split GameTopSplit(const LayoutKey& key, float unit, bool modern) {
     if (key.gameTop == 0 || key.aspect >= kPortraitAspect) {
@@ -509,18 +500,7 @@ Split GameTopSplit(const LayoutKey& key, float unit, bool modern) {
     if (1.0f - game < need) {
         game = key.aspect / kGameAspectWide;
     }
-    const float gap = kRailGapMm * unit;
-    float bandTop = game;
-    for (int i = 0; i < key.divisions.count; i++) {
-        const Rect& d = key.divisions.rects[i];
-        if (d.right - d.left < key.aspect * kDivisionMinWidth || d.top - gap < kMinGameBottom ||
-            d.bottom + gap >= 1.0f) {
-            continue;
-        }
-        game = std::min(game, d.top - gap);
-        bandTop = std::max(bandTop, d.bottom + gap);
-    }
-    return { game, std::max(bandTop, game) };
+    return { game, game };
 }
 
 struct Extent {
@@ -846,7 +826,7 @@ void EnsureLayout(float aspect, float pointHeight) {
     key.size = std::clamp(CVarGetFloat(CVAR_TOUCH("Scale"), 1.0f), 0.7f, 1.4f);
     key.reach = std::clamp(CVarGetFloat(CVAR_TOUCH("Reach"), 1.0f), 0.8f, 1.25f);
     key.margin = std::clamp(CVarGetFloat(CVAR_TOUCH("EdgeMargin"), 3.0f), 0.0f, 10.0f);
-    key.insets = SafeArea(pointHeight, &key.keepOuts, &key.divisions);
+    key.insets = SafeArea(pointHeight, &key.keepOuts);
     key.device = CVarGetInteger(CVAR_TOUCH("Layout"), 0);
     key.dpad = CVarGetInteger(CVAR_TOUCH("ShowDPad"), 0);
     key.mirror = CVarGetInteger(CVAR_TOUCH("Mirror"), 0);
