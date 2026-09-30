@@ -16,6 +16,8 @@ struct TouchControlsSafeArea {
     float bottom;
     int keepOutCount;
     TouchControlsKeepOut keepOuts[kTouchControlsMaxKeepOuts];
+    int divisionCount;
+    TouchControlsKeepOut divisions[kTouchControlsMaxKeepOuts];
 };
 
 TouchControlsSafeArea TouchControls_IosSafeArea();

@@ -37,14 +37,16 @@ UIView* GameView() {
     return view != nil ? view : uiWindow;
 }
 
-void AddKeepOut(TouchControlsSafeArea& area, CGRect rect, CGFloat height) {
-    if (area.keepOutCount >= kTouchControlsMaxKeepOuts || CGRectIsEmpty(rect)) {
+void AddRect(TouchControlsKeepOut* list, int& count, CGRect rect, CGFloat height) {
+    if (count >= kTouchControlsMaxKeepOuts || CGRectIsEmpty(rect)) {
         return;
     }
-    area.keepOuts[area.keepOutCount++] = { (float)(CGRectGetMinX(rect) / height),
-                                           (float)(CGRectGetMinY(rect) / height),
-                                           (float)(CGRectGetMaxX(rect) / height),
-                                           (float)(CGRectGetMaxY(rect) / height) };
+    list[count++] = { (float)(CGRectGetMinX(rect) / height), (float)(CGRectGetMinY(rect) / height),
+                      (float)(CGRectGetMaxX(rect) / height), (float)(CGRectGetMaxY(rect) / height) };
+}
+
+void AddKeepOut(TouchControlsSafeArea& area, CGRect rect, CGFloat height) {
+    AddRect(area.keepOuts, area.keepOutCount, rect, height);
 }
 
 bool AddReservedRegions(TouchControlsSafeArea& area, UIView* view, CGFloat height) {
@@ -55,6 +57,11 @@ bool AddReservedRegions(TouchControlsSafeArea& area, UIView* view, CGFloat heigh
         for (UIViewReservedRegion* region in regions) {
             if (region.active) {
                 AddKeepOut(area, region.frame, height);
+            }
+        }
+        for (UIViewReservedRegion* region in [view reservedRegionsOfKind:UIViewReservedRegionKind.divisionRegionKind]) {
+            if (region.active) {
+                AddRect(area.divisions, area.divisionCount, region.frame, height);
             }
         }
         return regions.count > 0;
@@ -101,11 +108,15 @@ TouchControlsSafeArea TouchControls_IosSafeArea() {
         AddSideCutout(area, view, in, size.height);
     }
     if (std::memcmp(&area, &sCached, sizeof(area)) != 0) {
-        SPDLOG_INFO("Touch safe area: view {}x{}, insets l{} t{} r{} b{}, {} keep-out(s)", size.width, size.height,
-                    in.left, in.top, in.right, in.bottom, area.keepOutCount);
+        SPDLOG_INFO("Touch safe area: view {}x{}, insets l{} t{} r{} b{}, {} keep-out(s), {} division(s)", size.width,
+                    size.height, in.left, in.top, in.right, in.bottom, area.keepOutCount, area.divisionCount);
         for (int i = 0; i < area.keepOutCount; i++) {
             const TouchControlsKeepOut& k = area.keepOuts[i];
             SPDLOG_INFO("Touch keep-out {}: {:.3f},{:.3f} - {:.3f},{:.3f}", i, k.left, k.top, k.right, k.bottom);
+        }
+        for (int i = 0; i < area.divisionCount; i++) {
+            const TouchControlsKeepOut& d = area.divisions[i];
+            SPDLOG_INFO("Touch division {}: {:.3f},{:.3f} - {:.3f},{:.3f}", i, d.left, d.top, d.right, d.bottom);
         }
     }
     sCached = area;
