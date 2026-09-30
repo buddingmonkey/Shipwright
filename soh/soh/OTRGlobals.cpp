@@ -4,6 +4,7 @@
 #include "OTRGlobals.h"
 #include "OTRAudio.h"
 #include <algorithm>
+#include <climits>
 #include <atomic>
 #include <cstdlib>
 #include <filesystem>
@@ -2189,6 +2190,8 @@ struct SubframePacing {
     std::chrono::steady_clock::time_point passEnd;
     int asked = 0;
     int drawn = 0;
+    int allowed = 0;
+    bool wasShort = false;
 };
 
 SubframePacing sPacing;
@@ -2250,6 +2253,8 @@ int PaceSubframes(int count, int fps) {
     sPacing.nextTick += std::chrono::nanoseconds(sPacing.naturalNs);
     sPacing.asked = std::min(count, allowed);
     sPacing.drawn = 0;
+    sPacing.allowed = allowed;
+    sPacing.wasShort = isShort;
     return sPacing.asked;
 }
 } // namespace
@@ -2361,6 +2366,32 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
     }
     ImGui::PopStyleColor();
 #ifdef ENABLE_DEBUG_TOOLS
+    if (sPacing.active) {
+        static auto sPacingSince = std::chrono::steady_clock::now();
+        static int sTicks = 0, sShort = 0, sMinAllowed = INT_MAX, sMaxAllowed = 0, sAskedSum = 0, sDrawnSum = 0;
+        sTicks++;
+        sShort += sPacing.wasShort ? 1 : 0;
+        sMinAllowed = std::min(sMinAllowed, sPacing.allowed);
+        sMaxAllowed = std::max(sMaxAllowed, sPacing.allowed);
+        sAskedSum += sPacing.asked;
+        sDrawnSum += sPacing.drawn;
+        const auto pacingNow = std::chrono::steady_clock::now();
+        if (pacingNow - sPacingSince >= std::chrono::seconds(1)) {
+            const uint32_t imports = intp->mTextureImportCount;
+            const uint64_t importNs = intp->mTextureImportNs;
+            const uint32_t loads = Ship::ResourceManager::BlockingLoadCount.exchange(0);
+            const uint64_t loadNs = Ship::ResourceManager::BlockingLoadNs.exchange(0);
+            intp->mTextureImportCount = 0;
+            intp->mTextureImportNs = 0;
+            SPDLOG_INFO("pacing: {} ticks, {} short, allowed {}-{} of {}, asked {} drawn {}, texture imports {} "
+                        "({:.1f} ms), blocking loads {} ({:.1f} ms)",
+                        sTicks, sShort, sMinAllowed, sMaxAllowed, count, sAskedSum, sDrawnSum, imports,
+                        importNs / 1.0e6, loads, loadNs / 1.0e6);
+            sPacingSince = pacingNow;
+            sTicks = sShort = sMaxAllowed = sAskedSum = sDrawnSum = 0;
+            sMinAllowed = INT_MAX;
+        }
+    }
     sLastDrawEnd = std::chrono::steady_clock::now();
     ReportDrawTime(std::chrono::duration_cast<std::chrono::nanoseconds>(sLastDrawEnd - drawStart).count(), logicNs,
                    drawnSubframes, drawCalls);
