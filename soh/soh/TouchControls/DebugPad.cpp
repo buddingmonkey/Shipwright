@@ -34,8 +34,7 @@ const NamedButton kButtons[] = {
 
 struct PadState {
     uint32_t buttons = 0;
-    bool leftStick = false;
-    bool rightStick = false;
+    uint32_t virtualButtons = 0;
     int8_t stickX = 0;
     int8_t stickY = 0;
     int8_t rightX = 0;
@@ -98,7 +97,15 @@ void Apply(const std::string& line, bool fresh) {
             continue;
         }
         if (token == "L3" || token == "R3") {
-            (token == "L3" ? next.leftStick : next.rightStick) = true;
+            next.virtualButtons |=
+                1u << (token == "L3" ? SDL_CONTROLLER_BUTTON_LEFTSTICK : SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+            continue;
+        }
+        if (token.rfind("PAD:", 0) == 0) {
+            const SDL_GameControllerButton button = SDL_GameControllerGetButtonFromString(token.c_str() + 4);
+            if (button != SDL_CONTROLLER_BUTTON_INVALID) {
+                next.virtualButtons |= 1u << button;
+            }
             continue;
         }
         for (const NamedButton& button : kButtons) {
@@ -161,8 +168,9 @@ void SyncVirtualPad() {
     }
     sVirtualWanted = -1;
     if (sVirtualPad != nullptr) {
-        SDL_JoystickSetVirtualButton(sVirtualPad, SDL_CONTROLLER_BUTTON_LEFTSTICK, sState.leftStick);
-        SDL_JoystickSetVirtualButton(sVirtualPad, SDL_CONTROLLER_BUTTON_RIGHTSTICK, sState.rightStick);
+        for (int button = 0; button < SDL_CONTROLLER_BUTTON_MAX; button++) {
+            SDL_JoystickSetVirtualButton(sVirtualPad, button, (sState.virtualButtons >> button) & 1);
+        }
     }
 }
 

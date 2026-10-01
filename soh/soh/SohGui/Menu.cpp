@@ -19,6 +19,12 @@ extern PlayState* gPlayState;
 
 std::vector<ImVec2> windowTypeSizes = { {} };
 
+#ifdef SOH_TOUCH_CONTROLS
+constexpr ImGuiChildFlags kMenuNavFlags = ImGuiChildFlags_NavFlattened;
+#else
+constexpr ImGuiChildFlags kMenuNavFlags = ImGuiChildFlags_None;
+#endif
+
 extern std::unordered_map<s16, const char*> warpPointSceneList;
 extern void Warp();
 
@@ -246,7 +252,7 @@ uint32_t Menu::DrawSearchResults(std::string& menuSearchText) {
     ImGui::SetNextWindowSizeConstraints({ ImGui::GetContentRegionAvail().x / 2, 0 },
                                         { ImGui::GetContentRegionAvail().x / 2, ImGui::GetContentRegionAvail().y });
     if (ImGui::BeginChild("Search Results Col 1", { ImGui::GetContentRegionAvail().x / 2, 0 },
-                          ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_NoTitleBar)) {
+                          ImGuiChildFlags_AutoResizeY | kMenuNavFlags, ImGuiWindowFlags_NoTitleBar)) {
         for (auto& menuLabel : menuOrder) {
             auto& menuEntry = menuEntries.at(menuLabel);
             for (auto& sidebarLabel : menuEntry.sidebarOrder) {
@@ -746,7 +752,8 @@ void Menu::DrawElement() {
     pos += window->WorkRect.GetSize() / 2 - menuSize / 2;
     ImGui::SetNextWindowPos(pos);
     ImGui::BeginChild("Menu Block", menuSize,
-                      ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize,
+                      ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize |
+                          kMenuNavFlags,
                       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
 
     std::unordered_map<std::string, SidebarEntry>* sidebar = nullptr;
@@ -767,7 +774,7 @@ void Menu::DrawElement() {
     bool autoFocus = CVarGetInteger(CVAR_SETTING("Menu.SearchAutofocus"), 0);
     const float headerButtonsWidth = headerWidth - (headerSearch ? searchWidth : 0.0f) - style.ItemSpacing.x;
     ImGui::BeginChild("Header Selection", { std::min(headerButtonsWidth, headerSelSize.x), headerSelSize.y },
-                      ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize,
+                      ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize | kMenuNavFlags,
                       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_HorizontalScrollbar);
     uint8_t curIndex = 0;
     for (auto& label : menuOrder) {
@@ -909,7 +916,8 @@ void Menu::DrawElement() {
     float topY = pos.y;
     ImGui::SetNextWindowSizeConstraints({ sidebarWidth, 0 }, { sidebarWidth, columnHeight });
     ImGui::BeginChild((menuEntries.at(headerIndex).label + " Section").c_str(), { sidebarWidth, columnHeight * 3 },
-                      ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize, ImGuiWindowFlags_NoTitleBar);
+                      ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize | kMenuNavFlags,
+                      ImGuiWindowFlags_NoTitleBar);
     for (auto& sidebarLabel : menuEntries.at(headerIndex).sidebarOrder) {
         std::string nextIndex = "";
         UIWidgets::PushStyleButton(menuThemeIndex);
@@ -961,8 +969,8 @@ void Menu::DrawElement() {
     if (!useColumns || (headerSearch && menuSearchText.length() > 0)) {
         ImGui::SameLine();
         ImGui::SetNextWindowSizeConstraints({ sectionWidth, 0 }, { sectionWidth, columnHeight });
-        ImGui::BeginChild(sectionMenuId.c_str(), { sectionWidth, windowHeight * 4 }, ImGuiChildFlags_AutoResizeY,
-                          ImGuiWindowFlags_NoTitleBar);
+        ImGui::BeginChild(sectionMenuId.c_str(), { sectionWidth, windowHeight * 4 },
+                          ImGuiChildFlags_AutoResizeY | kMenuNavFlags, ImGuiWindowFlags_NoTitleBar);
     }
     if (headerSearch && menuSearchText.length() > 0) {
         ImGui::AlignTextToFramePadding();
@@ -976,7 +984,7 @@ void Menu::DrawElement() {
             menuSearch.Clear();
         }
         ImGui::BeginChild("searchSeparator", ImVec2(ImGui::GetContentRegionAvail().x / 2, 20),
-                          ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                          ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | kMenuNavFlags);
         UIWidgets::Separator(true, true, 0, 10);
         ImGui::EndChild();
         uint32_t searchCount = DrawSearchResults(menuSearchText);
@@ -999,8 +1007,8 @@ void Menu::DrawElement() {
             std::string sectionId = spdlog::fmt_lib::format("{} Column {}", sectionMenuId, i);
             if (useColumns) {
                 ImGui::SetNextWindowSizeConstraints({ columnWidth, 0 }, { columnWidth, columnHeight });
-                ImGui::BeginChild(sectionId.c_str(), { columnWidth, windowHeight * 4 }, ImGuiChildFlags_AutoResizeY,
-                                  ImGuiWindowFlags_NoTitleBar);
+                ImGui::BeginChild(sectionId.c_str(), { columnWidth, windowHeight * 4 },
+                                  ImGuiChildFlags_AutoResizeY | kMenuNavFlags, ImGuiWindowFlags_NoTitleBar);
             }
             // for (auto& entryName : sidebar->at(sectionIndex).sidebarOrder) {
             for (auto& entry : sidebar->at(sectionIndex).columnWidgets.at(i)) {

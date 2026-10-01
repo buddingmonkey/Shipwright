@@ -216,12 +216,15 @@ struct State {
     bool menuPressed = false;
 };
 
+constexpr uint64_t kComboCooldownMs = 500;
+
 State sState;
 std::vector<Finger> sFingers;
 Layout sLayout;
 bool sLayoutValid = false;
 bool sMenuLatch = false;
 bool sComboLatch = false;
+uint64_t sComboToggledAt = 0;
 std::atomic<bool> sMenuButtonShown{ true };
 std::atomic<bool> sMenuVisible{ false };
 bool sGamepadPresent = false;
@@ -1117,7 +1120,9 @@ extern "C" void TouchControls_OpenMenu(void) {
 
 extern "C" void TouchControls_PollMenuCombo(void) {
     const bool held = StickComboHeld();
-    if (held && !sComboLatch) {
+    const uint64_t now = SDL_GetTicks64();
+    if (held && !sComboLatch && (sComboToggledAt == 0 || now - sComboToggledAt >= kComboCooldownMs)) {
+        sComboToggledAt = now;
         OpenMenu();
         SPDLOG_INFO("Stick press (L3 + R3) toggled the menu");
     }
