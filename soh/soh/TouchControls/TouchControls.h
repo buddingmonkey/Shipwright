@@ -11,6 +11,12 @@ void TouchControls_MergeInto(void* contPad);
 
 void TouchControls_OpenMenu(void);
 
+void TouchControls_PollMenuCombo(void);
+
+bool TouchControls_LastMenuButtonShown(void);
+
+bool TouchControls_LastMenuVisible(void);
+
 #ifdef __cplusplus
 }
 
@@ -29,6 +35,7 @@ class TouchControlsWindow final : public Ship::GuiWindow {
 namespace SoH {
 void TouchControls_Draw();
 bool TouchControls_Active();
+bool TouchControls_MenuButtonShown();
 } // namespace SoH
 #endif
 

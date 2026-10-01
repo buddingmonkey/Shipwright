@@ -162,10 +162,13 @@ void SohMenu::AddMenuSettings() {
     AddWidget(path, "Menu Controller Navigation", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_IMGUI_CONTROLLER_NAV)
         .RaceDisable(false)
-        .Options(CheckboxOptions().Tooltip(
-            "Allows controller navigation of the port menu (Settings, Enhancements,...)\nCAUTION: "
-            "This will disable game inputs while the menu is visible.\n\nD-pad to move between "
-            "items, A to select, B to move up in scope."));
+        .Options(CheckboxOptions()
+#if defined(SOH_MOBILE) && !defined(SOH_VISIONOS)
+                     .DefaultValue(true)
+#endif
+                     .Tooltip("Allows controller navigation of the port menu (Settings, Enhancements,...)\nCAUTION: "
+                              "This will disable game inputs while the menu is visible.\n\nD-pad to move between "
+                              "items, A to select, B to move up in scope."));
     AddWidget(path, "Allow background inputs", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ALLOW_BACKGROUND_INPUTS)
         .RaceDisable(false)
@@ -610,6 +613,19 @@ void SohMenu::AddMenuSettings() {
         .HideInSearch(true)
         .Options(WindowButtonOptions().Tooltip("Enables the separate Bindings Window."));
 #ifdef SOH_TOUCH_CONTROLS
+    AddWidget(path, "Menu Button", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Show Menu Button With Gamepad", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("TouchControls.MenuButtonWithGamepad"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = SoH::IsHeadsetWindow(); })
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Shows the menu button while a gamepad is connected. Press both sticks in (L3 + R3) to open the menu."));
+    AddWidget(path, "Show Menu Button With Controllers", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("XrMenuButtonWithController"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !SoH::IsHeadsetWindow(); })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Shows the menu button while controllers are connected. Press both sticks in (L3 + R3) to open the menu."));
     AddWidget(path, "On-Screen Controls", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Show On-Screen Controls", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_SETTING("TouchControls.Enabled"))

@@ -15,6 +15,7 @@
 #include <ship/controller/controldeck/ControlDeck.h>
 
 #include "soh/cvar_prefixes.h"
+#include "soh/TouchControls/TouchControls.h"
 
 namespace {
 
@@ -154,6 +155,7 @@ void XrWindow_Sync(Fast::Fast3dWindow* wnd) {
     Fast::SetXrStereo(CVarGetInteger(CVAR_SETTING("XrStereo"), 1) != 0);
     Fast::SetXrEdgeSoftness(CVarGetFloat(CVAR_SETTING("XrEdgeSoftness"), 0.36f));
     Fast::SetXrEdgeFloat(CVarGetFloat(CVAR_SETTING("XrEdgeFloat"), 0.15f));
+    Fast::SetXrMenuButtonShown(TouchControls_MenuButtonShown());
 #endif
 }
 

@@ -12,4 +12,7 @@ void BootCommands_Init() {
 #if defined(__SWITCH__) || defined(__WIIU__)
     CVarRegisterInteger(CVAR_IMGUI_CONTROLLER_NAV, 1); // always enable controller nav on switch/wii u
 #endif
+#if defined(SOH_MOBILE) && !defined(SOH_VISIONOS)
+    CVarRegisterInteger(CVAR_IMGUI_CONTROLLER_NAV, 1);
+#endif
 }

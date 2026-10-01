@@ -30,6 +30,10 @@ void SohVolumeNote(const char* text);
 
 void SohVolumeOpenMenu(void);
 
+bool SohVolumeMenuButtonShown(void);
+
+bool SohVolumeMenuVisible(void);
+
 void SohVolumePoint(float x, float y, bool pressed);
 
 typedef struct {

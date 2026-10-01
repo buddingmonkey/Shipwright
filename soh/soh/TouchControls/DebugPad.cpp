@@ -12,7 +12,9 @@
 #include <string>
 #include <system_error>
 
+#include <SDL2/SDL.h>
 #include <libultraship/libultra/controller.h>
+#include <spdlog/spdlog.h>
 
 #include "ship/Context.h"
 
@@ -32,6 +34,8 @@ const NamedButton kButtons[] = {
 
 struct PadState {
     uint32_t buttons = 0;
+    bool leftStick = false;
+    bool rightStick = false;
     int8_t stickX = 0;
     int8_t stickY = 0;
     int8_t rightX = 0;
@@ -45,6 +49,8 @@ std::filesystem::file_time_type sStamp;
 bool sHasStamp = false;
 int sPollCountdown = 0;
 std::atomic<bool> sMenuToggle{ false };
+SDL_Joystick* sVirtualPad = nullptr;
+int sVirtualWanted = -1;
 
 std::string RequestPath() {
     return Ship::Context::GetPathRelativeToAppDirectory("debug-pad");
@@ -87,6 +93,14 @@ void Apply(const std::string& line, bool fresh) {
             sMenuToggle = sMenuToggle || fresh;
             continue;
         }
+        if (token == "GAMEPAD" || token == "NOGAMEPAD") {
+            sVirtualWanted = token == "GAMEPAD" ? 1 : 0;
+            continue;
+        }
+        if (token == "L3" || token == "R3") {
+            (token == "L3" ? next.leftStick : next.rightStick) = true;
+            continue;
+        }
         for (const NamedButton& button : kButtons) {
             if (token == button.name) {
                 next.buttons |= button.bit;
@@ -127,6 +141,31 @@ void Poll() {
     Apply(line, fresh);
 }
 
+void SyncVirtualPad() {
+    if (sVirtualWanted == 1 && sVirtualPad == nullptr) {
+        const int index = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, SDL_CONTROLLER_AXIS_MAX,
+                                                    SDL_CONTROLLER_BUTTON_MAX, 0);
+        sVirtualPad = index < 0 ? nullptr : SDL_JoystickOpen(index);
+        SPDLOG_INFO("Debug pad attached a virtual gamepad: index {}, open {}, game controller {}, error \"{}\"", index,
+                    sVirtualPad != nullptr, index >= 0 && SDL_IsGameController(index), SDL_GetError());
+    } else if (sVirtualWanted == 0 && sVirtualPad != nullptr) {
+        const SDL_JoystickID id = SDL_JoystickInstanceID(sVirtualPad);
+        SDL_JoystickClose(sVirtualPad);
+        sVirtualPad = nullptr;
+        for (int i = 0; i < SDL_NumJoysticks(); i++) {
+            if (SDL_JoystickGetDeviceInstanceID(i) == id) {
+                SDL_JoystickDetachVirtual(i);
+                break;
+            }
+        }
+    }
+    sVirtualWanted = -1;
+    if (sVirtualPad != nullptr) {
+        SDL_JoystickSetVirtualButton(sVirtualPad, SDL_CONTROLLER_BUTTON_LEFTSTICK, sState.leftStick);
+        SDL_JoystickSetVirtualButton(sVirtualPad, SDL_CONTROLLER_BUTTON_RIGHTSTICK, sState.rightStick);
+    }
+}
+
 } // namespace
 
 extern "C" bool DebugPad_TakeMenuToggle(void) {
@@ -144,6 +183,7 @@ extern "C" void DebugPad_MergeInto(void* contPad) {
         sState = PadState();
         sHolding = false;
     }
+    SyncVirtualPad();
 
     OSContPad* pad = static_cast<OSContPad*>(contPad);
     pad->button |= sState.buttons;

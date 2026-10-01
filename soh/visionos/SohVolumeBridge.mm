@@ -20,6 +20,8 @@ extern "C" int SDL_main(int argc, char* argv[]);
 extern "C" void SDL_SetMainReady(void);
 extern "C" void SoH_SetAppOnScreen(int onScreen);
 extern "C" void TouchControls_OpenMenu(void);
+extern "C" bool TouchControls_LastMenuButtonShown(void);
+extern "C" bool TouchControls_LastMenuVisible(void);
 
 namespace {
 
@@ -352,6 +354,14 @@ void SohVolumeNote(const char* text) {
 
 void SohVolumeOpenMenu(void) {
     TouchControls_OpenMenu();
+}
+
+bool SohVolumeMenuButtonShown(void) {
+    return TouchControls_LastMenuButtonShown();
+}
+
+bool SohVolumeMenuVisible(void) {
+    return TouchControls_LastMenuVisible();
 }
 
 void SohVolumePoint(float x, float y, bool pressed) {

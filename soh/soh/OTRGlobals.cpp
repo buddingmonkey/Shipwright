@@ -77,8 +77,10 @@
 
 #ifdef SOH_MOBILE
 #include <SDL.h>
-#include "soh/TouchControls/TouchControls.h"
 #include "soh/TouchControls/DebugPad.h"
+#endif
+#ifdef SOH_TOUCH_CONTROLS
+#include "soh/TouchControls/TouchControls.h"
 #endif
 
 #ifdef __SWITCH__
@@ -2320,6 +2322,9 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
     if (sBackPressed.exchange(false)) {
         TouchControls_OpenMenu();
     }
+#endif
+#ifdef SOH_TOUCH_CONTROLS
+    TouchControls_PollMenuCombo();
 #endif
 #if defined(SOH_MOBILE) && defined(ENABLE_DEBUG_TOOLS)
     if (DebugPad_TakeMenuToggle()) {
