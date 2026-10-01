@@ -79,6 +79,8 @@ on Android and in the app's folder in the Files app on Apple devices.
   do not play the game. Open the menu with the button on the window (the **Menu** button under the
   volume on Vision Pro). *Settings > Graphics > Diorama Depth* sets how deep the world looks
   behind the window.
+* In a headset, the system file picker (for the ROM or a mod) may show no close button. Use the
+  system Back action to close it without a choice.
 
 ---
 

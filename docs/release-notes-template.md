@@ -43,6 +43,9 @@ extract the ROM again.
 In a headset, the game is a window in your room. Open the menu with the button on the window.
 **Quit** is in the menu.
 
+In a headset, the system file picker (for the ROM or a mod) may show no close button. Use the
+system Back action to close it without a choice.
+
 ## One APK covers all devices
 
 There is no separate headset file. The same package declares the phone, the Android XR and the
