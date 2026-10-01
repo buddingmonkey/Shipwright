@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cctype>
+#include <cstring>
+#include <fstream>
 #include <map>
 #include <set>
 #include <vector>
@@ -7,9 +9,6 @@
 #include <ship/utils/StringHelper.h>
 #include <ship/Context.h>
 #include <zip.h>
-#ifdef INCLUDE_MPQ_SUPPORT
-#include <StormLib.h>
-#endif
 
 #include "mod_menu.h"
 #include "soh/Enhancements/audio/OotrsArchive.h"
@@ -300,12 +299,10 @@ void UpdateModFiles(bool init = false, bool reset = false) {
 static bool IsReadableModArchive(const std::filesystem::path& path) {
 #ifdef INCLUDE_MPQ_SUPPORT
     if (StringHelper::IEquals(path.extension().generic_string(), ".otr")) {
-        HANDLE mpq = nullptr;
-        if (!SFileOpenArchive(path.string().c_str(), 0, MPQ_OPEN_READ_ONLY, &mpq)) {
-            return false;
-        }
-        SFileCloseArchive(mpq);
-        return true;
+        std::ifstream file(path, std::ios::binary);
+        char magic[4] = {};
+        return file.read(magic, sizeof(magic)) &&
+               (std::memcmp(magic, "MPQ\x1A", 4) == 0 || std::memcmp(magic, "MPQ\x1B", 4) == 0);
     }
 #endif
     zip_t* zip = zip_open(path.string().c_str(), ZIP_RDONLY, nullptr);
