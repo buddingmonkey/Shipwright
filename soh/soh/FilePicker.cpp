@@ -5,7 +5,10 @@
 #include <mutex>
 #include <SDL2/SDL_system.h>
 #include <spdlog/spdlog.h>
-#elif !defined(__IOS__) && !defined(__SWITCH__) && !defined(__WIIU__)
+#elif defined(__IOS__)
+#include <cstdlib>
+#include <sys/sysctl.h>
+#elif !defined(__SWITCH__) && !defined(__WIIU__)
 #define SOH_PFD_PICKER
 #include "Extractor/portable-file-dialogs.h"
 #endif
@@ -128,6 +131,23 @@ bool IsStagedCopy(const fs::path& path) {
     return fs::equivalent(path.parent_path(), fs::path(internal) / "import", ec);
 #else
     return false;
+#endif
+}
+
+std::string FilesAppFolder() {
+#if defined(SOH_VISIONOS)
+    return "Files > On My Apple Vision Pro > Ship of Harkinian";
+#elif defined(__IOS__)
+    const char* model = std::getenv("SIMULATOR_MODEL_IDENTIFIER");
+    char machine[64] = {};
+    size_t size = sizeof(machine) - 1;
+    if (model == nullptr && sysctlbyname("hw.machine", machine, &size, nullptr, 0) == 0) {
+        model = machine;
+    }
+    const bool iPhone = model != nullptr && std::string(model).rfind("iPhone", 0) == 0;
+    return std::string("Files > ") + (iPhone ? "On My iPhone" : "On My iPad") + " > Ship of Harkinian";
+#else
+    return "";
 #endif
 }
 
