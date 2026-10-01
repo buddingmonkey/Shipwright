@@ -6394,7 +6394,9 @@ void Interface_Draw(PlayState* play) {
         gDPPipeSync(OVERLAY_DISP++);
         gSPDisplayList(OVERLAY_DISP++, sSetupDL_80125A60);
         gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 0, 0, 0, interfaceCtx->unk_244);
-        gDPFillRectangle(OVERLAY_DISP++, 0, 0, gScreenWidth - 1, gScreenHeight - 1);
+        gDPFillWideRectangle(OVERLAY_DISP++, OTRGetRectDimensionFromLeftEdge(0), OTRGetRectDimensionFromTopEdge(0),
+                             OTRGetRectDimensionFromRightEdge(gScreenWidth - 1),
+                             OTRGetRectDimensionFromBottomEdge(gScreenHeight - 1));
     }
 
     CLOSE_DISPS(play->state.gfxCtx);

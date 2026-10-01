@@ -4,6 +4,7 @@
 #include "SohModals.h"
 #include "soh/OTRGlobals.h"
 #include "soh/XrWindow.h"
+#include "soh/GameScreen.h"
 #ifdef ENABLE_OPENXR
 #include <fast/backends/gfx_xr_view.h>
 #endif
@@ -57,6 +58,13 @@ static const std::map<int32_t, const char*> textureFilteringMap = {
 static const std::map<int32_t, const char*> notificationPosition = {
     { 0, "Top Left" }, { 1, "Top Right" }, { 2, "Bottom Left" }, { 3, "Bottom Right" }, { 4, "Hidden" },
 };
+
+#ifdef __ANDROID__
+static const std::map<int32_t, const char*> gameScreenOptions = {
+    { 0, "Main Screen" },
+    { 1, "Second Screen" },
+};
+#endif
 
 #ifdef SOH_TOUCH_CONTROLS
 static const std::map<int32_t, const char*> touchLayoutOptions = {
@@ -531,6 +539,18 @@ void SohMenu::AddMenuSettings() {
                               "off to draw one picture for the two eyes, at half the cost.")
                      .DefaultValue(true));
 #endif
+#endif
+#ifdef __ANDROID__
+    AddWidget(path, "Game Screen", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("GameScreen"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = SohGameScreen::Count() < 2 || SoH::IsHeadsetWindow(); })
+        .Callback([](WidgetInfo& info) { SohGameScreen::Show(CVarGetInteger(CVAR_SETTING("GameScreen"), 0)); })
+        .Options(ComboboxOptions()
+                     .ComboMap(gameScreenOptions)
+                     .DefaultIndex(0)
+                     .Tooltip("Selects the screen that shows the game. On a dual-screen device, the main screen "
+                              "is the top screen."));
 #endif
     AddWidget(path, "Renderer API (Needs reload)", WIDGET_VIDEO_BACKEND).RaceDisable(false);
     AddWidget(path, "Enable Vsync", WIDGET_CVAR_CHECKBOX)

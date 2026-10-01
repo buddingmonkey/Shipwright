@@ -1,14 +1,22 @@
 package com.harbormasters.soh;
 
+import android.app.ActivityManager;
+import android.app.ActivityOptions;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Rect;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
+import android.hardware.display.DisplayManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.ResultReceiver;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
@@ -54,9 +62,14 @@ public class SohActivity extends SDLActivity {
     private static final int REQUEST_PICK_FILE = 1;
     private static final String IMPORT_DIR = "import";
     private static final String FALLBACK_IMPORT_NAME = "import.tmp";
+    private static final String FEATURE_HINGE_ANGLE = "android.hardware.sensor.hinge_angle";
+    private static final int LARGE_SCREEN_DP = 600;
 
     private volatile boolean filePickPending = false;
     private volatile int softKeyboardResult = -1;
+    private int wantedScreen = -1;
+    private int loggedOrientation = -1;
+    private DisplayManager.DisplayListener screenListener;
     private final CountDownLatch assetsReady = new CountDownLatch(1);
 
     @Override
@@ -83,7 +96,130 @@ public class SohActivity extends SDLActivity {
             return view.onApplyWindowInsets(insets);
         });
         mLayout.requestApplyInsets();
+        applyOrientation(getResources().getConfiguration());
+        watchScreens();
     }
+
+    @Override
+    public void onConfigurationChanged(Configuration config) {
+        super.onConfigurationChanged(config);
+        applyOrientation(config);
+        reportScreens();
+    }
+
+    @Override
+    public void setOrientationBis(int w, int h, boolean resizable, String hint) {
+        runOnUiThread(() -> applyOrientation(getResources().getConfiguration()));
+    }
+
+    private boolean hasHinge() {
+        if (getPackageManager().hasSystemFeature(FEATURE_HINGE_ANGLE)) {
+            return true;
+        }
+        SensorManager sensors = getSystemService(SensorManager.class);
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && sensors != null
+            && sensors.getDefaultSensor(Sensor.TYPE_HINGE_ANGLE) != null;
+    }
+
+    private int screenSmallestDp(Configuration config) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return config.smallestScreenWidthDp;
+        }
+        Rect bounds = getWindowManager().getMaximumWindowMetrics().getBounds();
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(Math.min(bounds.width(), bounds.height()) / density);
+    }
+
+    private void applyOrientation(Configuration config) {
+        int smallest = screenSmallestDp(config);
+        boolean free = smallest >= LARGE_SCREEN_DP && hasHinge();
+        int wanted = free ? ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+                          : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+        if (loggedOrientation != wanted) {
+            Log.i(TAG, "Screen smallest " + smallest + " dp, window smallest " + config.smallestScreenWidthDp
+                  + " dp: " + (free ? "all orientations" : "landscape only"));
+            loggedOrientation = wanted;
+        }
+        if (getRequestedOrientation() != wanted) {
+            setRequestedOrientation(wanted);
+        }
+    }
+
+    private void watchScreens() {
+        DisplayManager displays = getSystemService(DisplayManager.class);
+        screenListener = new DisplayManager.DisplayListener() {
+            @Override
+            public void onDisplayAdded(int displayId) {
+                reportScreens();
+            }
+
+            @Override
+            public void onDisplayRemoved(int displayId) {
+                reportScreens();
+            }
+
+            @Override
+            public void onDisplayChanged(int displayId) {
+            }
+        };
+        displays.registerDisplayListener(screenListener, null);
+        reportScreens();
+    }
+
+    private List<Display> gameScreens() {
+        List<Display> screens = new ArrayList<>();
+        Intent game = new Intent(this, SohActivity.class);
+        for (Display display : getSystemService(DisplayManager.class).getDisplays()) {
+            int id = display.getDisplayId();
+            if (id == Display.DEFAULT_DISPLAY) {
+                screens.add(0, display);
+            } else if ((display.getFlags() & Display.FLAG_PRIVATE) == 0
+                       && getSystemService(ActivityManager.class).isActivityStartAllowedOnDisplay(this, id, game)) {
+                screens.add(display);
+            }
+        }
+        return screens;
+    }
+
+    private int currentDisplayId() {
+        return getWindowManager().getDefaultDisplay().getDisplayId();
+    }
+
+    private void reportScreens() {
+        List<Display> screens = gameScreens();
+        int current = -1;
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < screens.size(); i++) {
+            Display display = screens.get(i);
+            if (display.getDisplayId() == currentDisplayId()) {
+                current = i;
+            }
+            names.append(i == 0 ? "" : ", ").append(display.getDisplayId()).append(' ').append(display.getName());
+        }
+        Log.i(TAG, "Game screens: " + names + "; game on screen " + current);
+        int wanted = wantedScreen;
+        wantedScreen = -1;
+        if (wanted >= 0 && wanted < screens.size() && wanted != current) {
+            showOnScreen(screens.get(wanted));
+        } else if (!mBrokenLibraries) {
+            nativeGameScreens(screens.size(), Math.max(current, 0));
+        }
+    }
+
+    public void setGameScreen(int index) {
+        runOnUiThread(() -> {
+            wantedScreen = index;
+            reportScreens();
+        });
+    }
+
+    private void showOnScreen(Display display) {
+        Log.i(TAG, "Moving the game to screen " + display.getDisplayId() + " " + display.getName());
+        ActivityOptions options = ActivityOptions.makeBasic().setLaunchDisplayId(display.getDisplayId());
+        startActivity(new Intent(this, SohActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), options.toBundle());
+    }
+
+    private static native void nativeGameScreens(int count, int current);
 
     @Override
     protected String[] getArguments() {
@@ -135,10 +271,15 @@ public class SohActivity extends SDLActivity {
             deliverPickedFile(null);
         }
         boolean relaunch = isChangingConfigurations();
+        int displayId = currentDisplayId();
+        if (screenListener != null) {
+            getSystemService(DisplayManager.class).unregisterDisplayListener(screenListener);
+        }
         super.onDestroy();
         if (relaunch) {
-            Log.i(TAG, "Configuration change needs a new activity; starting a new process");
-            startActivity(new Intent(this, SohActivity.class));
+            Log.i(TAG, "Configuration change needs a new activity; starting a new process on screen " + displayId);
+            ActivityOptions options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId);
+            startActivity(new Intent(this, SohActivity.class), options.toBundle());
         }
         System.exit(0);
     }

@@ -1297,7 +1297,13 @@ void Play_DrawOverlayElements(PlayState* play) {
     }
 
     if (gSaveContext.gameMode == GAMEMODE_NORMAL) {
+        OPEN_DISPS(play->state.gfxCtx);
+        gSPSetExtraGeometryMode(OVERLAY_DISP++, G_EX_PIN_HUD_TO_EDGES);
+        CLOSE_DISPS(play->state.gfxCtx);
         Interface_Draw(play);
+        OPEN_DISPS(play->state.gfxCtx);
+        gSPClearExtraGeometryMode(OVERLAY_DISP++, G_EX_PIN_HUD_TO_EDGES);
+        CLOSE_DISPS(play->state.gfxCtx);
     }
 
     Message_Draw(play);

@@ -65,6 +65,7 @@
 
 #include <fast/interpreter.h>
 #include "soh/FilePicker.h"
+#include "soh/GameScreen.h"
 #include "soh/ShaderPrewarm.h"
 #include "soh/XrWindow.h"
 
@@ -2310,6 +2311,7 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count, int dr
     wnd->HandleEvents();
     OTRGlobals::Instance->ScaleImGui();
     SohFilePicker::Pump();
+    SohGameScreen::Pump();
 
 #ifdef SOH_MOBILE
     ParkWhileOffScreen();
