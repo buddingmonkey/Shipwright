@@ -316,6 +316,13 @@ static bool IsReadableModArchive(const std::filesystem::path& path) {
     return true;
 }
 
+static void RemoveStagedModCopy(const std::filesystem::path& source) {
+    if (SohFilePicker::IsStagedCopy(source)) {
+        std::error_code ec;
+        std::filesystem::remove(source, ec);
+    }
+}
+
 static void CopyModIntoModsFolder(const std::filesystem::path& source, const std::filesystem::path& target) {
     std::error_code ec;
     std::filesystem::path partial = target;
@@ -328,12 +335,11 @@ static void CopyModIntoModsFolder(const std::filesystem::path& source, const std
     if (ec) {
         std::error_code removeEc;
         std::filesystem::remove(partial, removeEc);
+        RemoveStagedModCopy(source);
         SohGui::RegisterPopup("Could Not Add Mod", "Could not copy the file into the mods folder.\n\n" + ec.message());
         return;
     }
-    if (SohFilePicker::IsStagedCopy(source)) {
-        std::filesystem::remove(source, ec);
-    }
+    RemoveStagedModCopy(source);
     UpdateModFiles(false, true);
     SohGui::RegisterPopup("Mod Added", target.filename().generic_string() +
                                            " is in the mods folder.\n\nClose and open Ship of Harkinian again to "
@@ -345,14 +351,17 @@ static void AcceptPickedModFile(const std::filesystem::path& source) {
     const std::string name = source.filename().generic_string();
     const std::string extension = source.extension().generic_string();
     if (!std::filesystem::is_regular_file(source, ec)) {
+        RemoveStagedModCopy(source);
         SohGui::RegisterPopup("Could Not Add Mod", "Could not read " + name + ".");
         return;
     }
     if (!IsValidExtension(extension) && !IsOotrsExtension(extension)) {
+        RemoveStagedModCopy(source);
         SohGui::RegisterPopup("Not a Mod File", name + " is not a mod file.\nA mod file is .o2r, .otr or .ootrs.");
         return;
     }
     if (!IsReadableModArchive(source)) {
+        RemoveStagedModCopy(source);
         SohGui::RegisterPopup("Not a Mod File", name + " is not a correct mod archive.");
         return;
     }
@@ -361,7 +370,7 @@ static void AcceptPickedModFile(const std::filesystem::path& source) {
     if (std::filesystem::exists(target, ec)) {
         SohGui::RegisterPopup(
             "Mod Already Exists", name + " is already in the mods folder.\n\nReplace it?", "Replace", "Cancel",
-            [source, target]() { CopyModIntoModsFolder(source, target); }, nullptr);
+            [source, target]() { CopyModIntoModsFolder(source, target); }, [source]() { RemoveStagedModCopy(source); });
         return;
     }
     CopyModIntoModsFolder(source, target);
