@@ -64,6 +64,7 @@ public class SohActivity extends SDLActivity {
     private static final String FALLBACK_IMPORT_NAME = "import.tmp";
     private static final String FEATURE_HINGE_ANGLE = "android.hardware.sensor.hinge_angle";
     private static final int LARGE_SCREEN_DP = 600;
+    private static final long PICKER_FOCUS_CHECK_MS = 500;
 
     private volatile boolean filePickPending = false;
     private volatile int softKeyboardResult = -1;
@@ -306,6 +307,7 @@ public class SohActivity extends SDLActivity {
         if (requestCode != REQUEST_PICK_FILE) {
             return;
         }
+        mLayout.postDelayed(this::takeBackFocus, PICKER_FOCUS_CHECK_MS);
         Uri source = (resultCode == RESULT_OK && data != null) ? data.getData() : null;
         if (source == null) {
             Log.i(TAG, "File picker canceled");
@@ -313,6 +315,15 @@ public class SohActivity extends SDLActivity {
             return;
         }
         new Thread(() -> deliverPickedFile(importPickedFile(source)), "FileImport").start();
+    }
+
+    private void takeBackFocus() {
+        if (hasWindowFocus() || isFinishing()) {
+            return;
+        }
+        Log.i(TAG, "No window focus after the file picker; bringing the game to the front");
+        ActivityOptions options = ActivityOptions.makeBasic().setLaunchDisplayId(currentDisplayId());
+        startActivity(new Intent(this, SohActivity.class), options.toBundle());
     }
 
     private void deliverPickedFile(String path) {
