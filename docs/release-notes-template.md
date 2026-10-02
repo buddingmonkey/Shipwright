@@ -4,6 +4,21 @@ This release ships the **Android build only**. One APK runs on an Android phone 
 
 For Windows, Linux and macOS, use the release from the main Ship of Harkinian project at <https://github.com/HarbourMasters/Shipwright/releases>. This fork builds and tests those platforms on every change, but it does not publish them. Two sets of desktop binaries from two places would only put users on a build that nobody supports.
 
+## What is new in this release
+
+### Foldable and dual-screen phones
+
+- **Foldables (Pixel Fold, Galaxy Z Fold):** on the large inner screen, the game turns with the device. In portrait, the game is at the top and the touch controls are in the space below. The outer screen stays in landscape.
+- **Dual-screen phones (Ayn Thor):** the game starts on the main screen. To move it to the other screen, go to **Settings > Graphics > Game Screen**. The app keeps your choice.
+- On tall windows, the HUD stays at the edges of the window.
+
+### Menu access
+
+- Press both sticks in (**L3 + R3**) at the same time to open or close the menu. This works with a gamepad on a phone or tablet, with a gamepad on the Galaxy XR, and with the Touch controllers on the Meta Quest.
+- **Phone or tablet:** while a gamepad is connected, the menu button is hidden. To show it, go to **Settings > Controls > Menu Button > Show Menu Button With Gamepad**.
+- **Headsets:** the menu button stays on the window. To hide it while controllers are connected, clear **Settings > Controls > Menu Button > Show Menu Button With Controllers**.
+- You can use the menu with a gamepad: the D-pad moves from item to item, **A** selects and **B** goes back. This is on by default. To change it, go to **Settings > General > Menu Controller Navigation**.
+
 ## Before you start
 
 Ship of Harkinian does not contain the game. You must supply your own Ocarina of Time ROM. The supported versions are listed in [`docs/supportedHashes.json`](https://github.com/buddingmonkey/Shipwright/blob/xr-integration/docs/supportedHashes.json). A `.z64`, `.n64` or `.v64` file is accepted. The app asks for the ROM on the first start and makes `oot.o2r` from it. A Master Quest ROM is optional and makes `oot-mq.o2r`.
@@ -20,11 +35,11 @@ Install the new APK over the old one. **Do not uninstall first**: an uninstall d
 
 ## Controls
 
-- **Phone or tablet:** on-screen touch controls, or a paired gamepad.
+- **Phone or tablet:** on-screen touch controls, or a paired gamepad. With a gamepad, press both sticks in (**L3 + R3**) to open the menu.
 - **Meta Quest:** the Touch controllers play the game. Hands point at the menu and move the window; they do not play the game.
 - **Galaxy XR:** pair a Bluetooth gamepad to play. Hands point at the menu and move the window; they do not play the game.
 
-In a headset, the game is a window in your room. Open the menu with the button on the window. **Quit** is in the menu.
+In a headset, the game is a window in your room. Open the menu with the button on the window, or press both sticks in (**L3 + R3**). **Quit** is in the menu.
 
 In a headset, the system file picker (for the ROM or a mod) may show no close button. Use the system Back action to close it without a choice.
 
