@@ -49,8 +49,8 @@ public class ScreenArtActivity extends Activity {
         wantedImage = index;
         gameDisplay = gameDisplayId;
         ScreenArtActivity activity = shown.get();
-        if (activity != null && !activity.isFinishing() && activity.getDisplay() != null
-            && activity.getDisplay().getDisplayId() == display.getDisplayId()) {
+        if (activity != null && !activity.isFinishing()
+            && activity.getWindowManager().getDefaultDisplay().getDisplayId() == display.getDisplayId()) {
             activity.showImage(index);
             return;
         }
