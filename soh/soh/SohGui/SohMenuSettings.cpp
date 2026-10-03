@@ -64,6 +64,10 @@ static const std::map<int32_t, const char*> gameScreenOptions = {
     { 0, "Main Screen" },
     { 1, "Second Screen" },
 };
+
+static const std::map<int32_t, const char*> screenArtOptions = {
+    { 0, "Cover" }, { 1, "Hero" }, { 2, "Fanart" }, { 3, "Back" }, { 4, "Box" }, { 5, "Black" },
+};
 #endif
 
 #ifdef SOH_TOUCH_CONTROLS
@@ -554,6 +558,15 @@ void SohMenu::AddMenuSettings() {
                      .DefaultIndex(0)
                      .Tooltip("Selects the screen that shows the game. On a dual-screen device, the main screen "
                               "is the top screen."));
+    AddWidget(path, "Other Screen Image", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("ScreenArt"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = SohGameScreen::Count() < 2 || SoH::IsHeadsetWindow(); })
+        .Callback([](WidgetInfo& info) { SohGameScreen::ShowScreenArt(); })
+        .Options(ComboboxOptions()
+                     .ComboMap(screenArtOptions)
+                     .DefaultIndex(0)
+                     .Tooltip("Selects the image on the screen that does not show the game."));
 #endif
     AddWidget(path, "Renderer API (Needs reload)", WIDGET_VIDEO_BACKEND).RaceDisable(false);
     AddWidget(path, "Enable Vsync", WIDGET_CVAR_CHECKBOX)
