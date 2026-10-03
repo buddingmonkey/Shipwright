@@ -726,16 +726,10 @@ void Menu::DrawElement() {
     ImVec2 pos = window->DC.CursorPos;
     float centerX = pos.x + windowWidth / 2 - (style.ItemSpacing.x * (menuEntries.size() + 1));
     std::vector<ImVec2> headerSizes;
-    float headerWidth = 0.0f;
     bool headerSearch = !CVarGetInteger(CVAR_SETTING("Menu.SidebarSearch"), 0);
     const float searchWidth = std::max(200.0f * density, ImGui::CalcTextSize("Search...").x + style.ItemSpacing.x);
-    if (headerSearch) {
-        headerWidth += searchWidth;
-    }
     for (auto& label : menuOrder) {
-        ImVec2 size = ImGui::CalcTextSize(label.c_str());
-        headerSizes.push_back(size);
-        headerWidth += size.x + style.FramePadding.x * 2 + style.ItemSpacing.x;
+        headerSizes.push_back(ImGui::CalcTextSize(label.c_str()));
     }
 
     // Full screen menu with widths below 1280, heights below 800.
@@ -757,28 +751,65 @@ void Menu::DrawElement() {
                       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
 
     std::unordered_map<std::string, SidebarEntry>* sidebar = nullptr;
-    float headerHeight = headerSizes.at(0).y + style.FramePadding.y * 2;
     ImVec2 buttonSize = ImGui::CalcTextSize(ICON_FA_TIMES_CIRCLE) + style.FramePadding * 2;
-    bool scrollbar = false;
     const float searchSpace = headerSearch ? searchWidth + style.ItemSpacing.x : 0.0f;
-    ImVec2 headerSelSize = { menuSize.x - buttonSize.x * 3 - style.ItemSpacing.x * 3 - searchSpace, headerHeight };
-    if (headerWidth - (headerSearch ? searchWidth : 0.0f) > headerSelSize.x) {
-        headerHeight += style.ScrollbarSize;
-        headerSelSize.y = headerHeight;
-        scrollbar = true;
+    const float headerAvailWidth = menuSize.x - buttonSize.x * 3 - style.ItemSpacing.x * 3;
+    std::vector<float> headerItemWidths;
+    float headerLabelsWidth = -style.ItemSpacing.x;
+    for (auto& size : headerSizes) {
+        headerItemWidths.push_back(size.x + style.FramePadding.x * 2);
+        headerLabelsWidth += headerItemWidths.back() + style.ItemSpacing.x;
     }
-    ImGui::SetNextWindowSizeConstraints({ 0, headerHeight }, { headerSelSize.x, headerHeight });
-    if (scrollbar) {
-        headerSelSize.y += style.ScrollbarSize;
+    const bool searchInHeader = headerSearch && headerLabelsWidth > headerAvailWidth - searchSpace;
+    if (searchInHeader) {
+        headerItemWidths.push_back(searchWidth);
     }
+    const float headerSelWidth = headerAvailWidth - (headerSearch && !searchInHeader ? searchSpace : 0.0f);
+    std::vector<bool> headerRowStart(headerItemWidths.size(), false);
+    int headerRows = 1;
+    float headerRowX = 0.0f;
+    float headerRowsWidth = 0.0f;
+    for (size_t i = 0; i < headerItemWidths.size(); i++) {
+        const float itemWidth = headerItemWidths[i];
+        if (headerRowX > 0.0f && headerRowX + itemWidth > headerSelWidth) {
+            headerRowStart[i] = true;
+            headerRows++;
+            headerRowX = 0.0f;
+        }
+        headerRowX += itemWidth + style.ItemSpacing.x;
+        headerRowsWidth = std::max(headerRowsWidth, headerRowX - style.ItemSpacing.x);
+    }
+    float headerHeight =
+        (headerSizes.at(0).y + style.FramePadding.y * 2) * headerRows + style.ItemSpacing.y * (headerRows - 1);
+    ImVec2 headerSelSize = { std::min(headerRowsWidth, headerSelWidth), headerHeight };
+    ImGui::SetNextWindowSizeConstraints({ 0, headerHeight }, headerSelSize);
     bool autoFocus = CVarGetInteger(CVAR_SETTING("Menu.SearchAutofocus"), 0);
-    const float headerButtonsWidth = headerWidth - (headerSearch ? searchWidth : 0.0f) - style.ItemSpacing.x;
-    ImGui::BeginChild("Header Selection", { std::min(headerButtonsWidth, headerSelSize.x), headerSelSize.y },
+    std::string menuSearchText = "";
+    auto drawSearch = [&]() {
+        const float searchX = ImGui::GetCursorPosX();
+        if (autoFocus && freshOpen) {
+            ImGui::SetKeyboardFocusHere();
+        }
+        auto color = UIWidgets::ColorValues.at(menuThemeIndex);
+        color.w = 0.6f;
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, color);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+        menuSearch.Draw("##search", searchWidth);
+        menuSearchText = menuSearch.InputBuf;
+        menuSearchText.erase(std::remove(menuSearchText.begin(), menuSearchText.end(), ' '), menuSearchText.end());
+        if (menuSearchText.length() < 1) {
+            ImGui::SameLine(searchX + style.ItemSpacing.x);
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.4f), "Search...");
+        }
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+    };
+    ImGui::BeginChild("Header Selection", headerSelSize,
                       ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize | kMenuNavFlags,
-                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_HorizontalScrollbar);
+                      ImGuiWindowFlags_NoTitleBar);
     uint8_t curIndex = 0;
     for (auto& label : menuOrder) {
-        if (curIndex != 0) {
+        if (curIndex != 0 && !headerRowStart[curIndex]) {
             ImGui::SameLine();
         }
         auto& entry = menuEntries.at(label);
@@ -810,27 +841,16 @@ void Menu::DrawElement() {
     if (sidebar == nullptr) { // headerIndex wasn't in menuOrder
         sidebar = &menuEntries.at(headerIndex).sidebars;
     }
+    if (searchInHeader) {
+        if (!headerRowStart.back()) {
+            ImGui::SameLine();
+        }
+        drawSearch();
+    }
     ImGui::EndChild();
-    std::string menuSearchText = "";
-    if (headerSearch) {
+    if (headerSearch && !searchInHeader) {
         ImGui::SameLine();
-        const float searchX = ImGui::GetCursorPosX();
-        if (autoFocus && freshOpen) {
-            ImGui::SetKeyboardFocusHere();
-        }
-        auto color = UIWidgets::ColorValues.at(menuThemeIndex);
-        color.w = 0.6f;
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, color);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-        menuSearch.Draw("##search", searchWidth);
-        menuSearchText = menuSearch.InputBuf;
-        menuSearchText.erase(std::remove(menuSearchText.begin(), menuSearchText.end(), ' '), menuSearchText.end());
-        if (menuSearchText.length() < 1) {
-            ImGui::SameLine(searchX + style.ItemSpacing.x);
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.4f), "Search...");
-        }
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor();
+        drawSearch();
     }
 #ifdef __IOS__
     ImGui::SameLine(menuSize.x - (buttonSize.x * 2) - style.ItemSpacing.x);
@@ -905,6 +925,14 @@ void Menu::DrawElement() {
     if (menuSize.x > 1600 * density) {
         sidebarWidth = menuSize.x * 0.15f;
     }
+    for (auto& [entryName, entry] : menuEntries) {
+        for (auto& sidebarLabel : entry.sidebarOrder) {
+            sidebarWidth = std::max(sidebarWidth, ImGui::CalcTextSize(sidebarLabel.c_str()).x +
+                                                      (style.FramePadding.x + style.ItemSpacing.x) * 2 +
+                                                      (density > 1.0f ? style.ScrollbarSize : 0.0f));
+        }
+    }
+    sidebarWidth = std::min(sidebarWidth, menuSize.x * 0.4f);
 
     const char* sidebarCvar = menuEntries.at(headerIndex).sidebarCvar;
 
