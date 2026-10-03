@@ -10,6 +10,7 @@ For Windows, Linux and macOS, use the release from the main Ship of Harkinian pr
 
 - **Foldables (Pixel Fold, Galaxy Z Fold):** on the large inner screen, the game turns with the device. In portrait, the game is at the top and the touch controls are in the space below. The outer screen stays in landscape.
 - **Dual-screen phones (Ayn Thor):** the game starts on the main screen. To move it to the other screen, go to **Settings > Graphics > Game Screen**. The app keeps your choice.
+- **Dual-screen phones (Ayn Thor):** the screen that does not show the game shows the original cover art. To show a different image or a black screen, go to **Settings > Graphics > Other Screen Image**. The choices are Cover, Hero, Fanart, Back, Box and Black. The app keeps your choice. When the game moves to the other screen, the image moves to the screen that the game left, and your controller stays connected to the game.
 - On tall windows, the HUD stays at the edges of the window.
 
 ### Menu access
@@ -18,6 +19,7 @@ For Windows, Linux and macOS, use the release from the main Ship of Harkinian pr
 - **Phone or tablet:** while a gamepad is connected, the menu button is hidden. To show it, go to **Settings > Controls > Menu Button > Show Menu Button With Gamepad**.
 - **Headsets:** the menu button stays on the window. To hide it while controllers are connected, clear **Settings > Controls > Menu Button > Show Menu Button With Controllers**.
 - You can use the menu with a gamepad: the D-pad moves from item to item, **A** selects and **B** goes back. This is on by default. To change it, go to **Settings > General > Menu Controller Navigation**.
+- On a narrow screen or at a large menu scale, the top bar of the menu wraps onto two rows. Before, the items at the right end were cut off, and you could not reach them by touch. The side bar is now wide enough for its labels. This applies, for example, to the second screen of the Ayn Thor.
 
 ## Before you start
 
